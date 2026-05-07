@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gym Split Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <h1>Gym Split Tracker</h1>
+        <p id="todayLabel"></p>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <h2 id="routineTitle">Today's Routine</h2>
+          <div class="top-actions">
+            <button id="completeWorkoutBtn" class="btn primary">Complete Workout</button>
+            <button id="resetTodayBtn" class="btn ghost">Reset Day</button>
+          </div>
+        </div>
+        <p id="routineSubtitle"></p>
+        <p id="dailyKgCounter" class="counter-text"></p>
+        <div id="exerciseList" class="exercise-list"></div>
+      </section>
+
+      <section class="card">
+        <h3>Upcoming Day</h3>
+        <p id="upcomingText"></p>
+      </section>
+
+      <section class="card">
+        <h3>Edit Workout Plan</h3>
+        <p class="muted">Update weights/reps as you get stronger. Changes save automatically.</p>
+        <div class="editor-controls">
+          <label for="daySelect">Day</label>
+          <select id="daySelect"></select>
+        </div>
+        <div id="editorList" class="editor-list"></div>
+      </section>
+
+      <section class="card">
+        <h3>Add New Exercise</h3>
+        <p class="muted">Add an exercise to any day in your split.</p>
+        <form id="addExerciseForm" class="add-form">
+          <label for="addDaySelect">Day</label>
+          <select id="addDaySelect" required></select>
+
+          <label for="exerciseNameInput">Exercise Name</label>
+          <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
+
+          <label for="exerciseWeightInput">Weight (kg)</label>
+          <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="e.g. 36" />
+
+          <label for="exerciseRepsInput">Reps</label>
+          <input id="exerciseRepsInput" type="text" placeholder="e.g. 6 or 5,5,5" />
+
+          <label for="exerciseSetsInput">Sets</label>
+          <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="e.g. 3" />
+
+          <button type="submit" class="btn primary">Add Exercise</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h3>Gym Attendance (This Month)</h3>
+        <p class="muted">Light blue = gym day done, pink = missed gym day, dark = rest day.</p>
+        <div class="attendance-controls">
+          <label for="pastDateInput">Mark past day as done</label>
+          <input id="pastDateInput" type="date" />
+          <div class="attendance-buttons">
+            <button id="markPastDoneBtn" class="btn primary" type="button">Mark Done</button>
+            <button id="unmarkPastDoneBtn" class="btn ghost" type="button">Unmark</button>
+          </div>
+        </div>
+        <div id="calendarMonthLabel" class="calendar-month"></div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+    </main>
+
+    <template id="exerciseTemplate">
+      <article class="exercise-item">
+        <div class="exercise-main">
+          <label class="checkbox-wrap">
+            <input type="checkbox" class="done-toggle" />
+            <span class="checkmark"></span>
+          </label>
+          <div>
+            <p class="exercise-name"></p>
+            <p class="exercise-info"></p>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <template id="editorTemplate">
+      <article class="editor-item">
+        <p class="exercise-name"></p>
+        <div class="editor-grid">
+          <label>
+            Weight (kg)
+            <input class="weight-input" type="text" inputmode="decimal" />
+          </label>
+          <label>
+            Reps
+            <input class="reps-input" type="text" />
+          </label>
+          <label>
+            Sets
+            <input class="sets-input" type="text" inputmode="numeric" />
+          </label>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
