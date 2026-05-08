@@ -113,7 +113,7 @@ function migrateState(parsed) {
   const state = parsed || {};
   state.doneByDate = state.doneByDate || {};
   state.completedByDate = state.completedByDate || {};
-  state.restDay = WEEK_DAYS.includes(state.restDay) ? state.restDay : DEFAULT_REST_DAY;
+  state.weekRestDayOverrides = state.weekRestDayOverrides || {};
 
   if (!Array.isArray(state.workoutTemplates) || state.workoutTemplates.length !== 6) {
     const sourcePlan = state.plan || DEFAULT_PLAN;
@@ -127,7 +127,12 @@ function migrateState(parsed) {
   }
   state.workoutTemplates = state.workoutTemplates.slice(0, 6);
   state.workoutTemplates.forEach(normalizeRoutine);
-  state.plan = buildPlanFromTemplates(state.restDay, state.workoutTemplates);
+  if (WEEK_DAYS.includes(state.restDay) && state.restDay !== DEFAULT_REST_DAY) {
+    const currentWeek = weekKey(new Date());
+    state.weekRestDayOverrides[currentWeek] = state.restDay;
+  }
+  delete state.restDay;
+  delete state.plan;
   return state;
 }
 
@@ -179,8 +184,38 @@ function tomorrowName() {
   return dayNameFromDate(d);
 }
 
-function rebuildPlan() {
-  state.plan = buildPlanFromTemplates(state.restDay, state.workoutTemplates);
+function startOfWeek(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay();
+  const diffToMonday = (day + 6) % 7;
+  d.setDate(d.getDate() - diffToMonday);
+  return d;
+}
+
+function weekKey(date) {
+  return formatDateKey(startOfWeek(date));
+}
+
+function getRestDayForWeek(date) {
+  const key = weekKey(date);
+  return state.weekRestDayOverrides[key] || DEFAULT_REST_DAY;
+}
+
+function getPlanForDate(date) {
+  return buildPlanFromTemplates(getRestDayForWeek(date), state.workoutTemplates);
+}
+
+function getRoutineForDate(date) {
+  const plan = getPlanForDate(date);
+  return plan[dayNameFromDate(date)];
+}
+
+function getDateForDayInCurrentWeek(dayName) {
+  const base = startOfWeek(new Date());
+  const index = WEEK_DAYS.indexOf(dayName);
+  const result = new Date(base);
+  result.setDate(base.getDate() + Math.max(index, 0));
+  return result;
 }
 
 const state = loadState();
@@ -256,10 +291,10 @@ function getDoneSetForToday() {
 }
 
 function updateTemplateForDay(day, updater) {
-  const templateIndex = getTemplateIndexForDay(day, state.restDay);
+  const currentWeekRestDay = getRestDayForWeek(new Date());
+  const templateIndex = getTemplateIndexForDay(day, currentWeekRestDay);
   if (templateIndex < 0) return false;
   updater(state.workoutTemplates[templateIndex]);
-  rebuildPlan();
   return true;
 }
 
@@ -286,8 +321,9 @@ function templateIndexesByFocus(focus) {
 }
 
 function renderToday() {
-  const day = todayName();
-  const routine = state.plan[day];
+  const today = new Date();
+  const day = dayNameFromDate(today);
+  const routine = getRoutineForDate(today);
   const doneSet = getDoneSetForToday();
 
   todayLabel.textContent = `Today is ${day}`;
@@ -344,8 +380,10 @@ function renderToday() {
 }
 
 function renderUpcoming() {
-  const day = tomorrowName();
-  const routine = state.plan[day];
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const day = dayNameFromDate(tomorrow);
+  const routine = getRoutineForDate(tomorrow);
   if (!routine) {
     upcomingText.textContent = "No upcoming routine found.";
     upcomingPreview.innerHTML = "";
@@ -398,21 +436,22 @@ function renderDayOptions(selectedDay) {
 
   const fallbackDay = WEEK_DAYS.includes(selectedDay) ? selectedDay : todayName();
   daySelect.value = fallbackDay;
-  restDaySelect.value = state.restDay;
+  restDaySelect.value = getRestDayForWeek(new Date());
   if (addWorkoutSelect.options.length) {
     addWorkoutSelect.value = addWorkoutSelect.options[0].value;
   }
 }
 
 function renderEditor(day) {
-  const routine = state.plan[day];
+  const routineDate = getDateForDayInCurrentWeek(day);
+  const routine = getRoutineForDate(routineDate);
   editorList.innerHTML = "";
   daySelectLabel.textContent = `Edit this day/workout (${day}: ${routine ? routine.focus : "Unknown"})`;
 
   if (!routine || routine.exercises.length === 0) {
     const p = document.createElement("p");
     p.className = "muted";
-    p.textContent = day === state.restDay
+    p.textContent = day === getRestDayForWeek(new Date())
       ? "This is your selected rest day. Change rest day above if needed."
       : "No exercises to edit for this day.";
     editorList.appendChild(p);
@@ -490,16 +529,16 @@ function handleAddExercise(event) {
       sets: sets || "1"
     });
   });
-  rebuildPlan();
 
   saveState();
 
-  const currentDay = todayName();
-  if (state.plan[currentDay] && state.plan[currentDay].focus === focus) {
+  const currentRoutine = getRoutineForDate(new Date());
+  if (currentRoutine && currentRoutine.focus === focus) {
     renderToday();
   }
 
-  if (state.plan[daySelect.value] && state.plan[daySelect.value].focus === focus) {
+  const selectedDayRoutine = getRoutineForDate(getDateForDayInCurrentWeek(daySelect.value));
+  if (selectedDayRoutine && selectedDayRoutine.focus === focus) {
     renderEditor(daySelect.value);
   }
 
@@ -514,7 +553,8 @@ function hasAnyWorkoutDone(date) {
 }
 
 function isRestDay(date) {
-  return dayNameFromDate(date) === state.restDay;
+  const routine = getRoutineForDate(date);
+  return !routine || routine.exercises.length === 0;
 }
 
 function calculateMonthlyAttendanceAndKg(year, month) {
@@ -527,7 +567,7 @@ function calculateMonthlyAttendanceAndKg(year, month) {
     const currentDate = new Date(year, month, day);
     const key = formatDateKey(currentDate);
     const dayName = dayNameFromDate(currentDate);
-    const routine = state.plan[dayName];
+    const routine = getRoutineForDate(currentDate);
 
     if (!routine || routine.exercises.length === 0) {
       continue;
@@ -631,9 +671,15 @@ function unmarkSelectedPastDateDone() {
 
 function handleRestDayChange() {
   const selected = restDaySelect.value;
-  if (!WEEK_DAYS.includes(selected) || selected === state.restDay) return;
-  state.restDay = selected;
-  rebuildPlan();
+  const now = new Date();
+  const currentWeek = weekKey(now);
+  const currentWeekRestDay = getRestDayForWeek(now);
+  if (!WEEK_DAYS.includes(selected) || selected === currentWeekRestDay) return;
+  if (selected === DEFAULT_REST_DAY) {
+    delete state.weekRestDayOverrides[currentWeek];
+  } else {
+    state.weekRestDayOverrides[currentWeek] = selected;
+  }
   saveState();
   renderDayOptions(daySelect.value);
   renderToday();
