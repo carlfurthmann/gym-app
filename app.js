@@ -1,4 +1,6 @@
 const STORAGE_KEY = "gym_split_tracker_v1";
+const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DEFAULT_REST_DAY = "Friday";
 
 const DEFAULT_PLAN = {
   Monday: {
@@ -43,10 +45,7 @@ const DEFAULT_PLAN = {
       { name: "Wall curls", weight: "20", reps: "5,5,5", sets: "1" }
     ]
   },
-  Friday: {
-    focus: "Rest",
-    exercises: []
-  },
+  Friday: { focus: "Rest", exercises: [] },
   Saturday: {
     focus: "Back, Shoulders, Traps",
     exercises: [
@@ -74,14 +73,96 @@ function deepCopy(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function normalizePlan(plan) {
-  Object.values(plan).forEach((routine) => {
-    routine.exercises.forEach((exercise) => {
-      if (exercise.sets === undefined || exercise.sets === null) {
-        exercise.sets = "1";
-      }
-    });
+function normalizeRoutine(routine) {
+  routine.exercises.forEach((exercise) => {
+    if (exercise.sets === undefined || exercise.sets === null) {
+      exercise.sets = "1";
+    }
   });
+}
+
+function defaultTemplates() {
+  return WEEK_DAYS.filter((day) => day !== DEFAULT_REST_DAY).map((day) => deepCopy(DEFAULT_PLAN[day]));
+}
+
+function buildPlanFromTemplates(restDay, workoutTemplates) {
+  const plan = {};
+  let templateIndex = 0;
+
+  WEEK_DAYS.forEach((day) => {
+    if (day === restDay) {
+      plan[day] = { focus: "Rest", exercises: [] };
+      return;
+    }
+
+    const template = workoutTemplates[templateIndex] || { focus: "Workout", exercises: [] };
+    plan[day] = deepCopy(template);
+    templateIndex += 1;
+  });
+
+  return plan;
+}
+
+function getTemplateIndexForDay(day, restDay) {
+  if (day === restDay) return -1;
+  const nonRestDays = WEEK_DAYS.filter((weekday) => weekday !== restDay);
+  return nonRestDays.indexOf(day);
+}
+
+function migrateState(parsed) {
+  const state = parsed || {};
+  state.doneByDate = state.doneByDate || {};
+  state.completedByDate = state.completedByDate || {};
+  state.restDay = WEEK_DAYS.includes(state.restDay) ? state.restDay : DEFAULT_REST_DAY;
+
+  if (!Array.isArray(state.workoutTemplates) || state.workoutTemplates.length !== 6) {
+    const sourcePlan = state.plan || DEFAULT_PLAN;
+    const sourceRestDay = WEEK_DAYS.includes(state.restDay) ? state.restDay : DEFAULT_REST_DAY;
+    const sourceDays = WEEK_DAYS.filter((day) => day !== sourceRestDay);
+    state.workoutTemplates = sourceDays.map((day) => deepCopy(sourcePlan[day] || { focus: "Workout", exercises: [] }));
+  }
+
+  while (state.workoutTemplates.length < 6) {
+    state.workoutTemplates.push({ focus: "Workout", exercises: [] });
+  }
+  state.workoutTemplates = state.workoutTemplates.slice(0, 6);
+  state.workoutTemplates.forEach(normalizeRoutine);
+  state.plan = buildPlanFromTemplates(state.restDay, state.workoutTemplates);
+  return state;
+}
+
+function loadState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) {
+    return migrateState({
+      restDay: DEFAULT_REST_DAY,
+      workoutTemplates: defaultTemplates()
+    });
+  }
+
+  try {
+    return migrateState(JSON.parse(saved));
+  } catch (error) {
+    return migrateState({
+      restDay: DEFAULT_REST_DAY,
+      workoutTemplates: defaultTemplates()
+    });
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateKey() {
+  return formatDateKey(new Date());
 }
 
 function todayName() {
@@ -98,38 +179,8 @@ function tomorrowName() {
   return dayNameFromDate(d);
 }
 
-function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) {
-    return {
-      plan: deepCopy(DEFAULT_PLAN),
-      doneByDate: {},
-      completedByDate: {}
-    };
-  }
-
-  try {
-    const parsed = JSON.parse(saved);
-    if (!parsed.completedByDate) {
-      parsed.completedByDate = {};
-    }
-    return parsed;
-  } catch (error) {
-    return {
-      plan: deepCopy(DEFAULT_PLAN),
-      doneByDate: {},
-      completedByDate: {}
-    };
-  }
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function dateKey() {
-  const now = new Date();
-  return now.toISOString().slice(0, 10);
+function rebuildPlan() {
+  state.plan = buildPlanFromTemplates(state.restDay, state.workoutTemplates);
 }
 
 const state = loadState();
@@ -141,6 +192,7 @@ const exerciseList = document.getElementById("exerciseList");
 const upcomingText = document.getElementById("upcomingText");
 const completeWorkoutBtn = document.getElementById("completeWorkoutBtn");
 const resetTodayBtn = document.getElementById("resetTodayBtn");
+const restDaySelect = document.getElementById("restDaySelect");
 const daySelect = document.getElementById("daySelect");
 const editorList = document.getElementById("editorList");
 const addExerciseForm = document.getElementById("addExerciseForm");
@@ -191,6 +243,14 @@ function getDoneSetForToday() {
     state.doneByDate[key] = [];
   }
   return new Set(state.doneByDate[key]);
+}
+
+function updateTemplateForDay(day, updater) {
+  const templateIndex = getTemplateIndexForDay(day, state.restDay);
+  if (templateIndex < 0) return false;
+  updater(state.workoutTemplates[templateIndex]);
+  rebuildPlan();
+  return true;
 }
 
 function renderToday() {
@@ -261,13 +321,12 @@ function renderUpcoming() {
   upcomingText.textContent = `${day}: ${routine.focus}`;
 }
 
-function renderDayOptions() {
-  const days = Object.keys(state.plan);
-
+function renderDayOptions(selectedDay) {
   daySelect.innerHTML = "";
   addDaySelect.innerHTML = "";
+  restDaySelect.innerHTML = "";
 
-  days.forEach((day) => {
+  WEEK_DAYS.forEach((day) => {
     const option = document.createElement("option");
     option.value = day;
     option.textContent = day;
@@ -277,14 +336,17 @@ function renderDayOptions() {
     addOption.value = day;
     addOption.textContent = day;
     addDaySelect.appendChild(addOption);
+
+    const restOption = document.createElement("option");
+    restOption.value = day;
+    restOption.textContent = day;
+    restDaySelect.appendChild(restOption);
   });
 
-  daySelect.value = todayName();
-  if (!state.plan[daySelect.value]) {
-    daySelect.value = "Monday";
-  }
-
-  addDaySelect.value = daySelect.value;
+  const fallbackDay = WEEK_DAYS.includes(selectedDay) ? selectedDay : todayName();
+  daySelect.value = fallbackDay;
+  addDaySelect.value = fallbackDay;
+  restDaySelect.value = state.restDay;
 }
 
 function renderEditor(day) {
@@ -294,7 +356,9 @@ function renderEditor(day) {
   if (!routine || routine.exercises.length === 0) {
     const p = document.createElement("p");
     p.className = "muted";
-    p.textContent = "No exercises to edit for this day.";
+    p.textContent = day === state.restDay
+      ? "This is your selected rest day. Change rest day above if needed."
+      : "No exercises to edit for this day.";
     editorList.appendChild(p);
     return;
   }
@@ -312,19 +376,25 @@ function renderEditor(day) {
     setsInput.value = exercise.sets || "1";
 
     weightInput.addEventListener("input", () => {
-      state.plan[day].exercises[index].weight = weightInput.value.trim();
+      updateTemplateForDay(day, (template) => {
+        template.exercises[index].weight = weightInput.value.trim();
+      });
       saveState();
       if (day === todayName()) renderToday();
     });
 
     repsInput.addEventListener("input", () => {
-      state.plan[day].exercises[index].reps = repsInput.value.trim();
+      updateTemplateForDay(day, (template) => {
+        template.exercises[index].reps = repsInput.value.trim();
+      });
       saveState();
       if (day === todayName()) renderToday();
     });
 
     setsInput.addEventListener("input", () => {
-      state.plan[day].exercises[index].sets = setsInput.value.trim();
+      updateTemplateForDay(day, (template) => {
+        template.exercises[index].sets = setsInput.value.trim();
+      });
       saveState();
       if (day === todayName()) renderToday();
     });
@@ -349,15 +419,17 @@ function handleAddExercise(event) {
   const reps = exerciseRepsInput.value.trim();
   const sets = exerciseSetsInput.value.trim();
 
-  if (!day || !name) {
+  if (!day || !name || day === state.restDay) {
     return;
   }
 
-  state.plan[day].exercises.push({
-    name,
-    weight,
-    reps,
-    sets: sets || "1"
+  updateTemplateForDay(day, (template) => {
+    template.exercises.push({
+      name,
+      weight,
+      reps,
+      sets: sets || "1"
+    });
   });
 
   saveState();
@@ -375,14 +447,12 @@ function handleAddExercise(event) {
 }
 
 function hasAnyWorkoutDone(date) {
-  const key = date.toISOString().slice(0, 10);
+  const key = formatDateKey(date);
   return (state.doneByDate[key] || []).length > 0 || Boolean(state.completedByDate[key]);
 }
 
 function isRestDay(date) {
-  const dayName = dayNameFromDate(date);
-  const routine = state.plan[dayName];
-  return !routine || routine.exercises.length === 0;
+  return dayNameFromDate(date) === state.restDay;
 }
 
 function renderCalendar() {
@@ -446,18 +516,31 @@ function unmarkSelectedPastDateDone() {
   renderCalendar();
 }
 
-normalizePlan(state.plan);
+function handleRestDayChange() {
+  const selected = restDaySelect.value;
+  if (!WEEK_DAYS.includes(selected) || selected === state.restDay) return;
+  state.restDay = selected;
+  rebuildPlan();
+  saveState();
+  renderDayOptions(daySelect.value);
+  renderToday();
+  renderUpcoming();
+  renderEditor(daySelect.value);
+  renderCalendar();
+}
+
 pastDateInput.max = dateKey();
 pastDateInput.value = dateKey();
 saveState();
 completeWorkoutBtn.addEventListener("click", completeTodayWorkout);
 resetTodayBtn.addEventListener("click", resetTodayProgress);
+restDaySelect.addEventListener("change", handleRestDayChange);
 daySelect.addEventListener("change", () => renderEditor(daySelect.value));
 addExerciseForm.addEventListener("submit", handleAddExercise);
 markPastDoneBtn.addEventListener("click", markSelectedPastDateDone);
 unmarkPastDoneBtn.addEventListener("click", unmarkSelectedPastDateDone);
 
-renderDayOptions();
+renderDayOptions(todayName());
 renderToday();
 renderUpcoming();
 renderEditor(daySelect.value);
