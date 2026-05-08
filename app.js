@@ -192,13 +192,16 @@ const routineTitle = document.getElementById("routineTitle");
 const routineSubtitle = document.getElementById("routineSubtitle");
 const exerciseList = document.getElementById("exerciseList");
 const upcomingText = document.getElementById("upcomingText");
+const toggleUpcomingPreviewBtn = document.getElementById("toggleUpcomingPreviewBtn");
+const upcomingPreview = document.getElementById("upcomingPreview");
 const completeWorkoutBtn = document.getElementById("completeWorkoutBtn");
 const resetTodayBtn = document.getElementById("resetTodayBtn");
 const restDaySelect = document.getElementById("restDaySelect");
+const daySelectLabel = document.getElementById("daySelectLabel");
 const daySelect = document.getElementById("daySelect");
 const editorList = document.getElementById("editorList");
 const addExerciseForm = document.getElementById("addExerciseForm");
-const addDaySelect = document.getElementById("addDaySelect");
+const addWorkoutSelect = document.getElementById("addWorkoutSelect");
 const exerciseNameInput = document.getElementById("exerciseNameInput");
 const exerciseWeightInput = document.getElementById("exerciseWeightInput");
 const exerciseRepsInput = document.getElementById("exerciseRepsInput");
@@ -211,6 +214,7 @@ const calendarMonthLabel = document.getElementById("calendarMonthLabel");
 const calendarGrid = document.getElementById("calendarGrid");
 const exerciseTemplate = document.getElementById("exerciseTemplate");
 const editorTemplate = document.getElementById("editorTemplate");
+let upcomingPreviewVisible = false;
 
 function formatExerciseInfo(exercise) {
   const weight = exercise.weight ? `${exercise.weight} kg` : "Weight not set";
@@ -257,6 +261,28 @@ function updateTemplateForDay(day, updater) {
   updater(state.workoutTemplates[templateIndex]);
   rebuildPlan();
   return true;
+}
+
+function workoutOptions() {
+  const seen = new Set();
+  const options = [];
+  state.workoutTemplates.forEach((template) => {
+    const focus = template.focus || "Workout";
+    if (focus === "Rest" || seen.has(focus)) return;
+    seen.add(focus);
+    options.push(focus);
+  });
+  return options;
+}
+
+function templateIndexesByFocus(focus) {
+  const indexes = [];
+  state.workoutTemplates.forEach((template, index) => {
+    if ((template.focus || "Workout") === focus) {
+      indexes.push(index);
+    }
+  });
+  return indexes;
 }
 
 function renderToday() {
@@ -322,14 +348,33 @@ function renderUpcoming() {
   const routine = state.plan[day];
   if (!routine) {
     upcomingText.textContent = "No upcoming routine found.";
+    upcomingPreview.innerHTML = "";
     return;
   }
   upcomingText.textContent = `${day}: ${routine.focus}`;
+  upcomingPreview.innerHTML = "";
+
+  if (!routine.exercises.length) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "Rest day coming up.";
+    upcomingPreview.appendChild(p);
+  } else {
+    routine.exercises.forEach((exercise) => {
+      const item = document.createElement("article");
+      item.className = "exercise-item";
+      item.innerHTML = `<p class="exercise-name">${exercise.name}</p><p class="exercise-info">${formatExerciseInfo(exercise)}</p>`;
+      upcomingPreview.appendChild(item);
+    });
+  }
+
+  upcomingPreview.classList.toggle("hidden", !upcomingPreviewVisible);
+  toggleUpcomingPreviewBtn.textContent = upcomingPreviewVisible ? "Hide upcoming exercises" : "Show upcoming exercises";
 }
 
 function renderDayOptions(selectedDay) {
   daySelect.innerHTML = "";
-  addDaySelect.innerHTML = "";
+  addWorkoutSelect.innerHTML = "";
   restDaySelect.innerHTML = "";
 
   WEEK_DAYS.forEach((day) => {
@@ -338,26 +383,31 @@ function renderDayOptions(selectedDay) {
     option.textContent = day;
     daySelect.appendChild(option);
 
-    const addOption = document.createElement("option");
-    addOption.value = day;
-    addOption.textContent = day;
-    addDaySelect.appendChild(addOption);
-
     const restOption = document.createElement("option");
     restOption.value = day;
     restOption.textContent = day;
     restDaySelect.appendChild(restOption);
   });
 
+  workoutOptions().forEach((focus) => {
+    const option = document.createElement("option");
+    option.value = focus;
+    option.textContent = focus;
+    addWorkoutSelect.appendChild(option);
+  });
+
   const fallbackDay = WEEK_DAYS.includes(selectedDay) ? selectedDay : todayName();
   daySelect.value = fallbackDay;
-  addDaySelect.value = fallbackDay;
   restDaySelect.value = state.restDay;
+  if (addWorkoutSelect.options.length) {
+    addWorkoutSelect.value = addWorkoutSelect.options[0].value;
+  }
 }
 
 function renderEditor(day) {
   const routine = state.plan[day];
   editorList.innerHTML = "";
+  daySelectLabel.textContent = `Edit this day/workout (${day}: ${routine ? routine.focus : "Unknown"})`;
 
   if (!routine || routine.exercises.length === 0) {
     const p = document.createElement("p");
@@ -419,37 +469,43 @@ function resetTodayProgress() {
 function handleAddExercise(event) {
   event.preventDefault();
 
-  const day = addDaySelect.value;
+  const focus = addWorkoutSelect.value;
   const name = exerciseNameInput.value.trim();
   const weight = exerciseWeightInput.value.trim();
   const reps = exerciseRepsInput.value.trim();
   const sets = exerciseSetsInput.value.trim();
 
-  if (!day || !name || day === state.restDay) {
+  if (!focus || !name) {
     return;
   }
 
-  updateTemplateForDay(day, (template) => {
-    template.exercises.push({
+  const indexes = templateIndexesByFocus(focus);
+  if (!indexes.length) return;
+
+  indexes.forEach((index) => {
+    state.workoutTemplates[index].exercises.push({
       name,
       weight,
       reps,
       sets: sets || "1"
     });
   });
+  rebuildPlan();
 
   saveState();
 
-  if (day === todayName()) {
+  const currentDay = todayName();
+  if (state.plan[currentDay] && state.plan[currentDay].focus === focus) {
     renderToday();
   }
 
-  if (daySelect.value === day) {
-    renderEditor(day);
+  if (state.plan[daySelect.value] && state.plan[daySelect.value].focus === focus) {
+    renderEditor(daySelect.value);
   }
 
   addExerciseForm.reset();
-  addDaySelect.value = day;
+  addWorkoutSelect.value = focus;
+  renderUpcoming();
 }
 
 function hasAnyWorkoutDone(date) {
@@ -586,6 +642,11 @@ function handleRestDayChange() {
   renderCalendar();
 }
 
+function toggleUpcomingPreview() {
+  upcomingPreviewVisible = !upcomingPreviewVisible;
+  renderUpcoming();
+}
+
 pastDateInput.max = dateKey();
 pastDateInput.value = dateKey();
 saveState();
@@ -596,6 +657,7 @@ daySelect.addEventListener("change", () => renderEditor(daySelect.value));
 addExerciseForm.addEventListener("submit", handleAddExercise);
 markPastDoneBtn.addEventListener("click", markSelectedPastDateDone);
 unmarkPastDoneBtn.addEventListener("click", unmarkSelectedPastDateDone);
+toggleUpcomingPreviewBtn.addEventListener("click", toggleUpcomingPreview);
 
 renderDayOptions(todayName());
 renderToday();

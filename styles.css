@@ -74,6 +74,10 @@ p {
   gap: 10px;
 }
 
+.hidden {
+  display: none;
+}
+
 .exercise-item,
 .editor-item {
   background: var(--card-2);

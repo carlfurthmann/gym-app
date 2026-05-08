@@ -31,6 +31,8 @@
       <section class="card">
         <h3>Upcoming Day</h3>
         <p id="upcomingText"></p>
+        <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
+        <div id="upcomingPreview" class="exercise-list hidden"></div>
       </section>
 
       <section class="card">
@@ -41,7 +43,7 @@
           <select id="restDaySelect"></select>
         </div>
         <div class="editor-controls">
-          <label for="daySelect">Day</label>
+          <label id="daySelectLabel" for="daySelect">Edit this day/workout</label>
           <select id="daySelect"></select>
         </div>
         <div id="editorList" class="editor-list"></div>
@@ -49,10 +51,10 @@
 
       <section class="card">
         <h3>Add New Exercise</h3>
-        <p class="muted">Add an exercise to any day in your split.</p>
+        <p class="muted">Add an exercise to a workout type. It updates all matching days automatically.</p>
         <form id="addExerciseForm" class="add-form">
-          <label for="addDaySelect">Day</label>
-          <select id="addDaySelect" required></select>
+          <label for="addWorkoutSelect">Workout</label>
+          <select id="addWorkoutSelect" required></select>
 
           <label for="exerciseNameInput">Exercise Name</label>
           <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
