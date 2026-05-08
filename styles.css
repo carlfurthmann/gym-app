@@ -222,8 +222,25 @@ input {
   padding: 6px;
   font-size: 0.85rem;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.calendar-cell:focus-visible {
+  outline: 2px solid #73c7ff;
+  outline-offset: 2px;
+}
+
+.calendar-weekday {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.calendar-daynum {
+  align-self: flex-end;
+  font-weight: 700;
 }
 
 .calendar-cell.empty {
@@ -262,6 +279,6 @@ input {
   .calendar-cell {
     min-height: 42px;
     padding: 4px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 }

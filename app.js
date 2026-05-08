@@ -186,6 +186,8 @@ function rebuildPlan() {
 const state = loadState();
 
 const todayLabel = document.getElementById("todayLabel");
+const monthlyAttendanceCounter = document.getElementById("monthlyAttendanceCounter");
+const monthlyKgCounter = document.getElementById("monthlyKgCounter");
 const routineTitle = document.getElementById("routineTitle");
 const routineSubtitle = document.getElementById("routineSubtitle");
 const exerciseList = document.getElementById("exerciseList");
@@ -221,6 +223,10 @@ function parseFirstNumber(value) {
   if (!value) return 0;
   const match = String(value).match(/-?\d+(\.\d+)?/);
   return match ? Number(match[0]) : 0;
+}
+
+function shortWeekdayName(date) {
+  return date.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 function computeTodayTotalKg(day, routine, doneSet) {
@@ -455,6 +461,41 @@ function isRestDay(date) {
   return dayNameFromDate(date) === state.restDay;
 }
 
+function calculateMonthlyAttendanceAndKg(year, month) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let attended = 0;
+  let workoutDays = 0;
+  let totalKg = 0;
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const currentDate = new Date(year, month, day);
+    const key = formatDateKey(currentDate);
+    const dayName = dayNameFromDate(currentDate);
+    const routine = state.plan[dayName];
+
+    if (!routine || routine.exercises.length === 0) {
+      continue;
+    }
+
+    workoutDays += 1;
+
+    const doneSet = new Set(state.doneByDate[key] || []);
+    totalKg += computeTodayTotalKg(dayName, routine, doneSet);
+
+    if (doneSet.size > 0 || state.completedByDate[key]) {
+      attended += 1;
+    }
+  }
+
+  return { attended, workoutDays, totalKg: Math.round(totalKg) };
+}
+
+function updateMonthlyCounters(year, month) {
+  const summary = calculateMonthlyAttendanceAndKg(year, month);
+  monthlyAttendanceCounter.textContent = `Gym attendance this month: ${summary.attended}/${summary.workoutDays} workout days`;
+  monthlyKgCounter.textContent = `Total lifted this month: ${summary.totalKg} kg`;
+}
+
 function renderCalendar() {
   const now = new Date();
   const year = now.getFullYear();
@@ -467,6 +508,7 @@ function renderCalendar() {
     month: "long",
     year: "numeric"
   });
+  updateMonthlyCounters(year, month);
 
   calendarGrid.innerHTML = "";
 
@@ -480,7 +522,22 @@ function renderCalendar() {
     const cellDate = new Date(year, month, day);
     const cell = document.createElement("div");
     cell.className = "calendar-cell";
-    cell.textContent = String(day);
+    cell.tabIndex = 0;
+    cell.setAttribute("role", "button");
+    cell.setAttribute("aria-label", `Select ${formatDateKey(cellDate)}`);
+    cell.innerHTML = `<span class="calendar-weekday">${shortWeekdayName(cellDate)}</span><span class="calendar-daynum">${day}</span>`;
+
+    const dayKey = formatDateKey(cellDate);
+    const selectThisDate = () => {
+      pastDateInput.value = dayKey;
+    };
+    cell.addEventListener("click", selectThisDate);
+    cell.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectThisDate();
+      }
+    });
 
     if (isRestDay(cellDate)) {
       cell.classList.add("rest");
