@@ -65,12 +65,11 @@
       <section id="workoutPage" class="page hidden">
         <div class="card">
           <h3>Today's Workout</h3>
-          <p class="muted">Pick any workout for today only. Your weekly plan stays the same.</p>
+          <p class="muted">Changing this updates <span id="todayPlanDayLabel"></span> in Plan → Weekly Schedule (fixed workout for that weekday).</p>
           <label for="todayWorkoutSelect">Workout</label>
           <select id="todayWorkoutSelect"></select>
           <div class="top-actions override-actions">
-            <button id="applyTodayWorkoutBtn" class="btn primary" type="button">Use for Today</button>
-            <button id="clearTodayWorkoutBtn" class="btn ghost" type="button">Back to Schedule</button>
+            <button id="clearTodayWorkoutBtn" class="btn ghost" type="button">Back to auto rotation</button>
           </div>
         </div>
         <div class="card">

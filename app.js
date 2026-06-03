@@ -46,7 +46,7 @@ const ui = {
   newWorkoutNameInput: document.getElementById("newWorkoutNameInput"),
   createWorkoutBtn: document.getElementById("createWorkoutBtn"),
   todayWorkoutSelect: document.getElementById("todayWorkoutSelect"),
-  applyTodayWorkoutBtn: document.getElementById("applyTodayWorkoutBtn"),
+  todayPlanDayLabel: document.getElementById("todayPlanDayLabel"),
   clearTodayWorkoutBtn: document.getElementById("clearTodayWorkoutBtn"),
   addExerciseForm: document.getElementById("addExerciseForm"),
   addWorkoutSelect: document.getElementById("addWorkoutSelect"),
@@ -749,17 +749,14 @@ function renderSpecificDayOverride() {
 
 function renderTodayWorkoutPicker() {
   if (!ui.todayWorkoutSelect) return;
+  const dayName = dayNameFromDate(new Date());
+  if (ui.todayPlanDayLabel) ui.todayPlanDayLabel.textContent = dayName;
   fillWorkoutSelect(ui.todayWorkoutSelect, { includeRest: true, includeCreateNew: false });
-  const todayKey = dateKey();
-  const override = state.dailyWorkoutOverrides[todayKey];
+  const planned = getWeekdayPlanValue(dayName);
   const routine = getRoutineForDate(new Date());
-  if (override) {
-    const resolved = override === "Rest" ? "Rest" : (getWorkoutById(override)?.id || override);
-    if ([...ui.todayWorkoutSelect.options].some((o) => o.value === resolved)) {
-      ui.todayWorkoutSelect.value = resolved;
-    }
-  } else if (routine.workoutId) {
-    ui.todayWorkoutSelect.value = routine.workoutId;
+  const value = planned || routine.workoutId || (routine.focus === "Rest" ? "Rest" : null);
+  if (value && [...ui.todayWorkoutSelect.options].some((o) => o.value === value)) {
+    ui.todayWorkoutSelect.value = value;
   }
 }
 
@@ -858,16 +855,33 @@ function handleAddExercise(event) {
   renderAll();
 }
 
+function setWeekdayPlan(dayName, val) {
+  if (val === "Rest") state.weeklyDayConfig[dayName] = { mode: SCHEDULE_REST };
+  else state.weeklyDayConfig[dayName] = { mode: "workout", workoutId: val };
+}
+
+function getWeekdayPlanValue(dayName) {
+  const cfg = state.weeklyDayConfig[dayName];
+  if (!cfg || !cfg.mode || cfg.mode === SCHEDULE_ROTATE) return null;
+  if (cfg.mode === SCHEDULE_REST) return "Rest";
+  if (cfg.mode === "workout" && cfg.workoutId) return cfg.workoutId;
+  return null;
+}
+
 function applyTodayWorkout() {
   const val = ui.todayWorkoutSelect.value;
   if (!val) return;
-  state.dailyWorkoutOverrides[dateKey()] = val;
+  const dayName = dayNameFromDate(new Date());
+  delete state.dailyWorkoutOverrides[dateKey()];
+  setWeekdayPlan(dayName, val);
   saveState();
   renderAll();
 }
 
 function clearTodayWorkout() {
+  const dayName = dayNameFromDate(new Date());
   delete state.dailyWorkoutOverrides[dateKey()];
+  delete state.weeklyDayConfig[dayName];
   saveState();
   renderAll();
 }
@@ -914,7 +928,7 @@ function setup() {
   ui.addWorkoutSelect.addEventListener("change", handleAddWorkoutSelectChange);
   ui.createWorkoutBtn.addEventListener("click", handleCreateWorkout);
   ui.addExerciseForm.addEventListener("submit", handleAddExercise);
-  ui.applyTodayWorkoutBtn.addEventListener("click", applyTodayWorkout);
+  ui.todayWorkoutSelect.addEventListener("change", applyTodayWorkout);
   ui.clearTodayWorkoutBtn.addEventListener("click", clearTodayWorkout);
   ui.toggleUpcomingPreviewBtn.addEventListener("click", () => { upcomingPreviewVisible = !upcomingPreviewVisible; renderUpcoming(); });
   ui.applyDayWorkoutBtn.addEventListener("click", applySpecificDayWorkout);
