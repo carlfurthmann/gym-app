@@ -38,6 +38,28 @@
           <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
           <div id="upcomingPreview" class="exercise-list hidden"></div>
         </div>
+        <div class="card" id="syncCard">
+          <h3>Cloud Sync (Supabase)</h3>
+          <p id="syncStatus" class="muted">Not connected</p>
+          <div id="syncLoggedOut">
+            <label for="syncEmail">Email</label>
+            <input id="syncEmail" type="email" autocomplete="email" placeholder="you@email.com" />
+            <label for="syncPassword">Password</label>
+            <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Password" />
+            <div class="top-actions override-actions">
+              <button id="syncLoginBtn" class="btn primary" type="button">Log in</button>
+              <button id="syncSignupBtn" class="btn ghost" type="button">Sign up</button>
+            </div>
+          </div>
+          <div id="syncLoggedIn" class="hidden">
+            <p id="syncUserEmail" class="muted"></p>
+            <div class="top-actions override-actions">
+              <button id="syncPullBtn" class="btn ghost" type="button">Load from cloud</button>
+              <button id="syncPushBtn" class="btn primary" type="button">Save to cloud</button>
+              <button id="syncLogoutBtn" class="btn ghost" type="button">Log out</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="workoutPage" class="page hidden">
@@ -153,6 +175,8 @@
       </article>
     </template>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

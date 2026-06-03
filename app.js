@@ -12,7 +12,10 @@ const DEFAULT_PLAN = {
   Sunday: { focus: "Legs (Cardio)", exercises: [{ name: "Leg press", weight: "240", reps: "4", sets: "1" }, { name: "Front raise", weight: "85", reps: "6", sets: "1" }, { name: "Squat", weight: "", reps: "", sets: "1" }, { name: "Hamstring curl", weight: "", reps: "", sets: "1" }, { name: "Calf raise", weight: "", reps: "", sets: "1" }, { name: "Deadlift unassisted", weight: "120", reps: "3", sets: "1" }] }
 };
 
-const state = loadState();
+let state = loadState();
+let supabaseClient = null;
+let cloudPushTimer = null;
+
 const ui = {
   todayLabel: document.getElementById("todayLabel"),
   monthlyAttendanceCounter: document.getElementById("monthlyAttendanceCounter"),
@@ -52,7 +55,18 @@ const ui = {
   exerciseTemplate: document.getElementById("exerciseTemplate"),
   editorTemplate: document.getElementById("editorTemplate"),
   navButtons: Array.from(document.querySelectorAll(".nav-btn")),
-  pages: Array.from(document.querySelectorAll(".page"))
+  pages: Array.from(document.querySelectorAll(".page")),
+  syncStatus: document.getElementById("syncStatus"),
+  syncLoggedOut: document.getElementById("syncLoggedOut"),
+  syncLoggedIn: document.getElementById("syncLoggedIn"),
+  syncEmail: document.getElementById("syncEmail"),
+  syncPassword: document.getElementById("syncPassword"),
+  syncLoginBtn: document.getElementById("syncLoginBtn"),
+  syncSignupBtn: document.getElementById("syncSignupBtn"),
+  syncLogoutBtn: document.getElementById("syncLogoutBtn"),
+  syncPullBtn: document.getElementById("syncPullBtn"),
+  syncPushBtn: document.getElementById("syncPushBtn"),
+  syncUserEmail: document.getElementById("syncUserEmail")
 };
 let upcomingPreviewVisible = false;
 
@@ -100,7 +114,153 @@ function migrateState(parsed) {
   return s;
 }
 
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function saveState(skipCloud) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (!skipCloud) scheduleCloudPush();
+}
+
+function getStatePayload() {
+  return {
+    doneByDate: state.doneByDate,
+    completedByDate: state.completedByDate,
+    weekRestDayOverrides: state.weekRestDayOverrides,
+    dailyWorkoutOverrides: state.dailyWorkoutOverrides,
+    workoutTemplates: state.workoutTemplates
+  };
+}
+
+function applyStatePayload(payload) {
+  const migrated = migrateState(deepCopy(payload));
+  state.doneByDate = migrated.doneByDate;
+  state.completedByDate = migrated.completedByDate;
+  state.weekRestDayOverrides = migrated.weekRestDayOverrides;
+  state.dailyWorkoutOverrides = migrated.dailyWorkoutOverrides;
+  state.workoutTemplates = migrated.workoutTemplates;
+  saveState(true);
+}
+
+function isSyncConfigured() {
+  const url = window.GYM_SUPABASE_URL || "";
+  const key = window.GYM_SUPABASE_ANON_KEY || "";
+  return url.startsWith("https://") && key.length > 20 && !key.includes("PASTE_YOUR");
+}
+
+function initSupabase() {
+  if (!isSyncConfigured() || !window.supabase) {
+    setSyncStatus("Add your anon key in config.js to enable sync.");
+    return;
+  }
+  supabaseClient = window.supabase.createClient(window.GYM_SUPABASE_URL, window.GYM_SUPABASE_ANON_KEY);
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    updateSyncUI(session);
+    if (session) handlePostLoginSync();
+  });
+  supabaseClient.auth.getSession().then(({ data }) => updateSyncUI(data.session));
+}
+
+function setSyncStatus(message) {
+  if (ui.syncStatus) ui.syncStatus.textContent = message;
+}
+
+function updateSyncUI(session) {
+  if (!session) {
+    ui.syncLoggedOut.classList.remove("hidden");
+    ui.syncLoggedIn.classList.add("hidden");
+    setSyncStatus("Log in to sync across devices.");
+    return;
+  }
+  ui.syncLoggedOut.classList.add("hidden");
+  ui.syncLoggedIn.classList.remove("hidden");
+  ui.syncUserEmail.textContent = `Logged in as ${session.user.email}`;
+  setSyncStatus("Connected — changes auto-save to cloud.");
+}
+
+async function handlePostLoginSync() {
+  const cloud = await fetchCloudState();
+  const localHasData = Object.keys(state.doneByDate || {}).length > 0
+    || Object.keys(state.completedByDate || {}).length > 0;
+  if (cloud) {
+    applyStatePayload(cloud);
+    setSyncStatus("Loaded your data from the cloud.");
+    renderAll();
+  } else if (localHasData) {
+    await pushToCloud();
+    setSyncStatus("Your local data was saved to the cloud.");
+  }
+}
+
+async function fetchCloudState() {
+  if (!supabaseClient) return null;
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabaseClient
+    .from("gym_profiles")
+    .select("data")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error || !data || !data.data) return null;
+  return data.data;
+}
+
+async function pushToCloud() {
+  if (!supabaseClient) return;
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  const { error } = await supabaseClient.from("gym_profiles").upsert(
+    {
+      user_id: user.id,
+      data: getStatePayload(),
+      updated_at: new Date().toISOString()
+    },
+    { onConflict: "user_id" }
+  );
+  if (error) {
+    setSyncStatus(`Cloud save failed: ${error.message}`);
+    return;
+  }
+  setSyncStatus("Saved to cloud.");
+}
+
+function scheduleCloudPush() {
+  if (!supabaseClient) return;
+  clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(() => pushToCloud(), 800);
+}
+
+async function syncLogin() {
+  if (!supabaseClient) return;
+  const email = ui.syncEmail.value.trim();
+  const password = ui.syncPassword.value;
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) setSyncStatus(error.message);
+  else ui.syncPassword.value = "";
+}
+
+async function syncSignup() {
+  if (!supabaseClient) return;
+  const email = ui.syncEmail.value.trim();
+  const password = ui.syncPassword.value;
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) setSyncStatus(error.message);
+  else setSyncStatus("Account created. Check email if confirmation is required, then log in.");
+}
+
+async function syncLogout() {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  setSyncStatus("Logged out. This device keeps local data only.");
+}
+
+async function syncPull() {
+  const cloud = await fetchCloudState();
+  if (!cloud) {
+    setSyncStatus("No cloud data found for this account.");
+    return;
+  }
+  applyStatePayload(cloud);
+  setSyncStatus("Loaded from cloud.");
+  renderAll();
+}
 function getRestDayForWeek(date) { return state.weekRestDayOverrides[weekKey(date)] || DEFAULT_REST_DAY; }
 function buildPlanForDate(date) {
   const restDay = getRestDayForWeek(date);
@@ -400,6 +560,12 @@ function setup() {
   ui.pastDateInput.value = dateKey();
   ui.specificDateInput.value = dateKey();
   renderNav();
+  initSupabase();
+  ui.syncLoginBtn.addEventListener("click", syncLogin);
+  ui.syncSignupBtn.addEventListener("click", syncSignup);
+  ui.syncLogoutBtn.addEventListener("click", syncLogout);
+  ui.syncPullBtn.addEventListener("click", syncPull);
+  ui.syncPushBtn.addEventListener("click", pushToCloud);
   ui.completeWorkoutBtn.addEventListener("click", completeTodayWorkout);
   ui.resetTodayBtn.addEventListener("click", resetTodayProgress);
   ui.markPastDoneBtn.addEventListener("click", markPastDone);
