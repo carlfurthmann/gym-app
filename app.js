@@ -571,12 +571,27 @@ function scheduleSelectValue(dayName) {
   return SCHEDULE_ROTATE;
 }
 
+function dayAssignmentLabel(dayName, weekPlan) {
+  const routine = weekPlan[dayName];
+  const mode = getDayScheduleValue(dayName);
+  const restDay = getRestDayForWeek(new Date());
+  if (dayName === restDay && mode === SCHEDULE_ROTATE) {
+    return "Rest (weekly rest day)";
+  }
+  if (!routine || routine.focus === "Rest") return "Rest";
+  if (mode === SCHEDULE_ROTATE) return `Auto → ${routine.focus}`;
+  if (mode === "workout") return `Fixed → ${routine.focus}`;
+  return routine.focus;
+}
+
 function renderWeeklySchedule() {
   ui.weeklyDaySchedule.innerHTML = "";
-  const rotateLabel = getRotationPool().map((w) => w.name).join(" → ") || "(none — check workouts above)";
+  const pool = getRotationPool();
+  const rotateLabel = pool.map((w) => w.name).join(" → ") || "(none — check workouts above)";
+  const weekPlan = buildWeekAssignments(new Date());
   const hint = document.createElement("p");
   hint.className = "muted";
-  hint.textContent = `Rotation order: ${rotateLabel}`;
+  hint.textContent = `Rotation pool (auto days only): ${rotateLabel}. Fixed and rest days do not advance the rotation.`;
   ui.weeklyDaySchedule.appendChild(hint);
   WEEK_DAYS.forEach((day) => {
     const row = document.createElement("div");
@@ -584,6 +599,8 @@ function renderWeeklySchedule() {
     const dayLabel = document.createElement("span");
     dayLabel.className = "day-label";
     dayLabel.textContent = day;
+    const col = document.createElement("div");
+    col.className = "schedule-day-col";
     const select = document.createElement("select");
     const auto = document.createElement("option");
     auto.value = SCHEDULE_ROTATE;
@@ -600,20 +617,26 @@ function renderWeeklySchedule() {
       select.appendChild(option);
     });
     select.value = scheduleSelectValue(day);
+    const assignmentEl = document.createElement("span");
+    assignmentEl.className = "day-assignment";
+    assignmentEl.textContent = dayAssignmentLabel(day, weekPlan);
     select.addEventListener("change", () => {
       const val = select.value;
       if (val === SCHEDULE_ROTATE) delete state.weeklyDayConfig[day];
       else if (val === SCHEDULE_REST) state.weeklyDayConfig[day] = { mode: SCHEDULE_REST };
       else if (val.startsWith("workout:")) state.weeklyDayConfig[day] = { mode: "workout", workoutId: val.slice(8) };
       saveState();
+      renderWeeklySchedule();
       renderEditor();
       renderHomeAndWorkout();
       renderUpcoming();
       renderSpecificDayOverride();
       renderTodayWorkoutPicker();
     });
+    col.appendChild(select);
+    col.appendChild(assignmentEl);
     row.appendChild(dayLabel);
-    row.appendChild(select);
+    row.appendChild(col);
     ui.weeklyDaySchedule.appendChild(row);
   });
 }

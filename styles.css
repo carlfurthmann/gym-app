@@ -239,8 +239,19 @@ h2, h3, p {
   display: grid;
   grid-template-columns: 88px 1fr;
   gap: 8px;
-  align-items: center;
+  align-items: start;
   margin-bottom: 8px;
+}
+
+.schedule-day-col {
+  display: grid;
+  gap: 4px;
+}
+
+.day-assignment {
+  font-size: 0.85rem;
+  color: #b7e2ff;
+  font-weight: 600;
 }
 
 .schedule-row .day-label {
