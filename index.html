@@ -8,83 +8,113 @@
   </head>
   <body>
     <main class="app">
-      <header class="topbar">
+      <header class="topbar card">
         <h1>Gym Split Tracker</h1>
         <p id="todayLabel"></p>
-        <p id="monthlyAttendanceCounter" class="counter-text"></p>
-        <p id="monthlyKgCounter" class="counter-text"></p>
       </header>
 
-      <section class="card">
-        <div class="row">
-          <h2 id="routineTitle">Today's Routine</h2>
-          <div class="top-actions">
-            <button id="completeWorkoutBtn" class="btn primary">Complete Workout</button>
-            <button id="resetTodayBtn" class="btn ghost">Reset Day</button>
+      <nav class="navbar card">
+        <button class="nav-btn active" data-page-target="homePage" type="button">Home</button>
+        <button class="nav-btn" data-page-target="workoutPage" type="button">Workout</button>
+        <button class="nav-btn" data-page-target="planPage" type="button">Plan</button>
+        <button class="nav-btn" data-page-target="calendarPage" type="button">Calendar</button>
+      </nav>
+
+      <section id="homePage" class="page active-page">
+        <div class="card">
+          <h2>Overview</h2>
+          <p id="monthlyAttendanceCounter" class="counter-text"></p>
+          <p id="monthlyKgCounter" class="counter-text"></p>
+          <p id="dailyKgCounter" class="counter-text"></p>
+        </div>
+        <div class="card">
+          <h3 id="homeTodayTitle">Today</h3>
+          <p id="homeTodaySubtitle" class="muted"></p>
+          <p id="homeTodayCount" class="muted"></p>
+        </div>
+        <div class="card">
+          <h3>Upcoming Day</h3>
+          <p id="upcomingText"></p>
+          <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
+          <div id="upcomingPreview" class="exercise-list hidden"></div>
+        </div>
+      </section>
+
+      <section id="workoutPage" class="page hidden">
+        <div class="card">
+          <div class="row">
+            <h2 id="routineTitle">Today's Routine</h2>
+            <div class="top-actions">
+              <button id="completeWorkoutBtn" class="btn primary">Complete Workout</button>
+              <button id="resetTodayBtn" class="btn ghost">Reset Day</button>
+            </div>
           </div>
+          <p id="routineSubtitle"></p>
+          <div id="exerciseList" class="exercise-list"></div>
         </div>
-        <p id="routineSubtitle"></p>
-        <p id="dailyKgCounter" class="counter-text"></p>
-        <div id="exerciseList" class="exercise-list"></div>
-      </section>
-
-      <section class="card">
-        <h3>Upcoming Day</h3>
-        <p id="upcomingText"></p>
-        <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
-        <div id="upcomingPreview" class="exercise-list hidden"></div>
-      </section>
-
-      <section class="card">
-        <h3>Edit Workout Plan</h3>
-        <p class="muted">Update weights/reps as you get stronger. Changes save automatically.</p>
-        <div class="editor-controls">
-          <label for="restDaySelect">Rest Day</label>
-          <select id="restDaySelect"></select>
-        </div>
-        <div class="editor-controls">
-          <label id="daySelectLabel" for="daySelect">Edit this day/workout</label>
-          <select id="daySelect"></select>
-        </div>
-        <div id="editorList" class="editor-list"></div>
-      </section>
-
-      <section class="card">
-        <h3>Add New Exercise</h3>
-        <p class="muted">Add an exercise to a workout type. It updates all matching days automatically.</p>
-        <form id="addExerciseForm" class="add-form">
-          <label for="addWorkoutSelect">Workout</label>
-          <select id="addWorkoutSelect" required></select>
-
-          <label for="exerciseNameInput">Exercise Name</label>
-          <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
-
-          <label for="exerciseWeightInput">Weight (kg)</label>
-          <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="e.g. 36" />
-
-          <label for="exerciseRepsInput">Reps</label>
-          <input id="exerciseRepsInput" type="text" placeholder="e.g. 6 or 5,5,5" />
-
-          <label for="exerciseSetsInput">Sets</label>
-          <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="e.g. 3" />
-
-          <button type="submit" class="btn primary">Add Exercise</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <h3>Gym Attendance (This Month)</h3>
-        <p class="muted">Light blue = gym day done, pink = missed gym day, dark = rest day.</p>
-        <div class="attendance-controls">
-          <label for="pastDateInput">Mark past day as done</label>
-          <input id="pastDateInput" type="date" />
-          <div class="attendance-buttons">
-            <button id="markPastDoneBtn" class="btn primary" type="button">Mark Done</button>
-            <button id="unmarkPastDoneBtn" class="btn ghost" type="button">Unmark</button>
+        <div class="card">
+          <h3>Override One Specific Day</h3>
+          <p class="muted">Choose a date and workout. This only changes that single date.</p>
+          <label for="specificDateInput">Date</label>
+          <input id="specificDateInput" type="date" />
+          <label for="specificWorkoutSelect">Workout for this date</label>
+          <select id="specificWorkoutSelect"></select>
+          <div class="top-actions override-actions">
+            <button id="applyDayWorkoutBtn" class="btn primary" type="button">Apply to Date</button>
+            <button id="clearDayWorkoutBtn" class="btn ghost" type="button">Clear Override</button>
           </div>
+          <p id="specificDateSummary" class="muted"></p>
         </div>
-        <div id="calendarMonthLabel" class="calendar-month"></div>
-        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+
+      <section id="planPage" class="page hidden">
+        <div class="card">
+          <h3>Edit Workout Plan</h3>
+          <p class="muted">Update weights/reps/sets as you get stronger.</p>
+          <div class="editor-controls">
+            <label for="restDaySelect">Rest Day (current week only)</label>
+            <select id="restDaySelect"></select>
+          </div>
+          <div class="editor-controls">
+            <label id="daySelectLabel" for="daySelect">Edit this day/workout</label>
+            <select id="daySelect"></select>
+          </div>
+          <div id="editorList" class="editor-list"></div>
+        </div>
+        <div class="card">
+          <h3>Add New Exercise</h3>
+          <p class="muted">Add to a workout type (all matching days).</p>
+          <form id="addExerciseForm" class="add-form">
+            <label for="addWorkoutSelect">Workout</label>
+            <select id="addWorkoutSelect" required></select>
+            <label for="exerciseNameInput">Exercise Name</label>
+            <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
+            <label for="exerciseWeightInput">Weight (kg)</label>
+            <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="e.g. 36" />
+            <label for="exerciseRepsInput">Reps</label>
+            <input id="exerciseRepsInput" type="text" placeholder="e.g. 6 or 5,5,5" />
+            <label for="exerciseSetsInput">Sets</label>
+            <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="e.g. 3" />
+            <button type="submit" class="btn primary">Add Exercise</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="calendarPage" class="page hidden">
+        <div class="card">
+          <h3>Gym Attendance (This Month)</h3>
+          <p class="muted">Light blue = gym day done, pink = missed gym day, dark = rest day.</p>
+          <div class="attendance-controls">
+            <label for="pastDateInput">Mark past day as done</label>
+            <input id="pastDateInput" type="date" />
+            <div class="attendance-buttons">
+              <button id="markPastDoneBtn" class="btn primary" type="button">Mark Done</button>
+              <button id="unmarkPastDoneBtn" class="btn ghost" type="button">Unmark</button>
+            </div>
+          </div>
+          <div id="calendarMonthLabel" class="calendar-month"></div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+        </div>
       </section>
     </main>
 

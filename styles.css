@@ -26,8 +26,9 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 16px;
-  display: grid;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .topbar h1 {
@@ -49,6 +50,51 @@ body {
   box-shadow: 0 0 0 1px #00000033 inset;
 }
 
+.navbar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.nav-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #130f20;
+  color: var(--muted);
+  padding: 10px;
+  font-weight: 700;
+}
+
+.nav-btn.active {
+  color: #071823;
+  background: #73c7ff;
+}
+
+.page {
+  display: grid;
+  gap: 12px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#toggleUpcomingPreviewBtn {
+  margin-top: 12px;
+}
+
+#upcomingPreview:not(.hidden) {
+  margin-top: 14px;
+}
+
+.override-actions {
+  margin-top: 14px;
+}
+
+#specificWorkoutSelect {
+  margin-bottom: 4px;
+}
+
 .row {
   display: flex;
   justify-content: space-between;
@@ -62,9 +108,7 @@ body {
   flex-wrap: wrap;
 }
 
-h2,
-h3,
-p {
+h2, h3, p {
   margin-top: 0;
 }
 
@@ -72,10 +116,6 @@ p {
 .editor-list {
   display: grid;
   gap: 10px;
-}
-
-.hidden {
-  display: none;
 }
 
 .exercise-item,
@@ -269,6 +309,10 @@ input {
 @media (max-width: 600px) {
   .app {
     padding: 12px;
+  }
+
+  .navbar {
+    grid-template-columns: 1fr 1fr;
   }
 
   .row {
