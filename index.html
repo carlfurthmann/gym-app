@@ -64,6 +64,16 @@
 
       <section id="workoutPage" class="page hidden">
         <div class="card">
+          <h3>Today's Workout</h3>
+          <p class="muted">Pick any workout for today only. Your weekly plan stays the same.</p>
+          <label for="todayWorkoutSelect">Workout</label>
+          <select id="todayWorkoutSelect"></select>
+          <div class="top-actions override-actions">
+            <button id="applyTodayWorkoutBtn" class="btn primary" type="button">Use for Today</button>
+            <button id="clearTodayWorkoutBtn" class="btn ghost" type="button">Back to Schedule</button>
+          </div>
+        </div>
+        <div class="card">
           <div class="row">
             <h2 id="routineTitle">Today's Routine</h2>
             <div class="top-actions">
@@ -91,24 +101,43 @@
 
       <section id="planPage" class="page hidden">
         <div class="card">
-          <h3>Edit Workout Plan</h3>
-          <p class="muted">Update weights/reps/sets as you get stronger.</p>
+          <h3>My Workouts</h3>
+          <p class="muted">Create workouts and choose which ones rotate through your week.</p>
+          <div id="rotationWorkoutList" class="rotation-list"></div>
+        </div>
+        <div class="card">
+          <h3>Weekly Schedule</h3>
+          <p class="muted">Set each weekday to auto-rotate, rest, or a fixed workout.</p>
           <div class="editor-controls">
             <label for="restDaySelect">Rest Day (current week only)</label>
             <select id="restDaySelect"></select>
           </div>
+          <div id="weeklyDaySchedule" class="weekly-schedule"></div>
+        </div>
+        <div class="card">
+          <h3>Edit Workout</h3>
+          <p class="muted">Update weights/reps/sets for a workout template.</p>
           <div class="editor-controls">
-            <label id="daySelectLabel" for="daySelect">Edit this day/workout</label>
+            <label id="daySelectLabel" for="editWorkoutSelect">Workout to edit</label>
+            <select id="editWorkoutSelect"></select>
+          </div>
+          <div class="editor-controls">
+            <label for="daySelect">Preview day on schedule</label>
             <select id="daySelect"></select>
           </div>
           <div id="editorList" class="editor-list"></div>
         </div>
         <div class="card">
           <h3>Add New Exercise</h3>
-          <p class="muted">Add to a workout type (all matching days).</p>
+          <p class="muted">Add an exercise to a workout template.</p>
           <form id="addExerciseForm" class="add-form">
             <label for="addWorkoutSelect">Workout</label>
             <select id="addWorkoutSelect" required></select>
+            <div id="createWorkoutPanel" class="create-workout-panel hidden">
+              <label for="newWorkoutNameInput">New workout name</label>
+              <input id="newWorkoutNameInput" type="text" placeholder="e.g. Chest &amp; Arms" />
+              <button id="createWorkoutBtn" class="btn ghost" type="button">Create workout</button>
+            </div>
             <label for="exerciseNameInput">Exercise Name</label>
             <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
             <label for="exerciseWeightInput">Weight (kg)</label>

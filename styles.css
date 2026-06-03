@@ -207,6 +207,54 @@ h2, h3, p {
   gap: 10px;
 }
 
+.rotation-list,
+.weekly-schedule {
+  display: grid;
+  gap: 8px;
+}
+
+.rotation-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--card-2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.rotation-item label {
+  margin: 0;
+  flex: 1;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.rotation-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.schedule-row .day-label {
+  font-weight: 700;
+  color: #b7e2ff;
+}
+
+.create-workout-panel {
+  padding: 10px;
+  background: var(--card-2);
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+}
+
 label {
   display: block;
   color: var(--muted);

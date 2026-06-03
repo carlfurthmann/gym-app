@@ -1,6 +1,9 @@
 const STORAGE_KEY = "gym_split_tracker_v1";
 const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DEFAULT_REST_DAY = "Friday";
+const CREATE_WORKOUT_VALUE = "__create_new__";
+const SCHEDULE_ROTATE = "rotate";
+const SCHEDULE_REST = "rest";
 
 const DEFAULT_PLAN = {
   Monday: { focus: "Chest, Arms", exercises: [{ name: "Dumbbell press", weight: "34", reps: "5", sets: "1" }, { name: "Flies", weight: "60", reps: "6", sets: "1" }, { name: "Triceps pulldown", weight: "75", reps: "7", sets: "1" }, { name: "Skull crusher", weight: "32", reps: "8", sets: "1" }, { name: "Wall curls", weight: "20", reps: "5,5,5", sets: "1" }] },
@@ -35,7 +38,16 @@ const ui = {
   restDaySelect: document.getElementById("restDaySelect"),
   daySelectLabel: document.getElementById("daySelectLabel"),
   daySelect: document.getElementById("daySelect"),
+  editWorkoutSelect: document.getElementById("editWorkoutSelect"),
   editorList: document.getElementById("editorList"),
+  rotationWorkoutList: document.getElementById("rotationWorkoutList"),
+  weeklyDaySchedule: document.getElementById("weeklyDaySchedule"),
+  createWorkoutPanel: document.getElementById("createWorkoutPanel"),
+  newWorkoutNameInput: document.getElementById("newWorkoutNameInput"),
+  createWorkoutBtn: document.getElementById("createWorkoutBtn"),
+  todayWorkoutSelect: document.getElementById("todayWorkoutSelect"),
+  applyTodayWorkoutBtn: document.getElementById("applyTodayWorkoutBtn"),
+  clearTodayWorkoutBtn: document.getElementById("clearTodayWorkoutBtn"),
   addExerciseForm: document.getElementById("addExerciseForm"),
   addWorkoutSelect: document.getElementById("addWorkoutSelect"),
   exerciseNameInput: document.getElementById("exerciseNameInput"),
@@ -79,20 +91,52 @@ function parseFirstNumber(value) { const m = String(value || "").match(/-?\d+(\.
 function startOfWeek(date) { const d = new Date(date.getFullYear(), date.getMonth(), date.getDate()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
 function weekKey(date) { return formatDateKey(startOfWeek(date)); }
 
-function normalizeRoutine(routine) {
-  routine.exercises.forEach((exercise) => { if (exercise.sets === undefined || exercise.sets === null) exercise.sets = "1"; });
+function normalizeExercises(exercises) {
+  exercises.forEach((exercise) => { if (exercise.sets === undefined || exercise.sets === null) exercise.sets = "1"; });
+}
+
+function newWorkoutId() {
+  return `w_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function defaultWorkoutLibrary() {
+  const seen = new Set();
+  const library = [];
+  WEEK_DAYS.forEach((day) => {
+    const routine = DEFAULT_PLAN[day];
+    if (!routine || routine.focus === "Rest" || seen.has(routine.focus)) return;
+    seen.add(routine.focus);
+    library.push({ id: newWorkoutId(), name: routine.focus, exercises: deepCopy(routine.exercises) });
+  });
+  library.forEach((w) => normalizeExercises(w.exercises));
+  return library;
 }
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   const raw = saved ? safelyParse(saved) : {
-    doneByDate: {}, completedByDate: {}, weekRestDayOverrides: {}, dailyWorkoutOverrides: {},
-    workoutTemplates: WEEK_DAYS.filter((d) => d !== DEFAULT_REST_DAY).map((d) => deepCopy(DEFAULT_PLAN[d]))
+    doneByDate: {}, completedByDate: {}, weekRestDayOverrides: {}, dailyWorkoutOverrides: {}
   };
   return migrateState(raw);
 }
 
 function safelyParse(raw) { try { return JSON.parse(raw); } catch { return null; } }
+
+function migrateFromTemplates(s) {
+  const srcPlan = s.plan || DEFAULT_PLAN;
+  const templates = Array.isArray(s.workoutTemplates) && s.workoutTemplates.length
+    ? s.workoutTemplates
+    : WEEK_DAYS.filter((d) => d !== DEFAULT_REST_DAY).map((d) => deepCopy(srcPlan[d] || { focus: "Workout", exercises: [] }));
+  const byName = new Map();
+  templates.forEach((template) => {
+    const name = template.focus || "Workout";
+    if (!byName.has(name)) byName.set(name, { id: newWorkoutId(), name, exercises: deepCopy(template.exercises || []) });
+  });
+  s.workoutLibrary = [...byName.values()];
+  s.rotationWorkoutIds = s.workoutLibrary.map((w) => w.id);
+  s.weeklyDayConfig = {};
+  s.workoutLibrary.forEach((w) => normalizeExercises(w.exercises));
+}
 
 function migrateState(parsed) {
   const s = parsed || {};
@@ -100,17 +144,29 @@ function migrateState(parsed) {
   s.completedByDate = s.completedByDate || {};
   s.weekRestDayOverrides = s.weekRestDayOverrides || {};
   s.dailyWorkoutOverrides = s.dailyWorkoutOverrides || {};
-  if (!Array.isArray(s.workoutTemplates) || s.workoutTemplates.length !== 6) {
-    const srcPlan = s.plan || DEFAULT_PLAN;
-    const srcRest = WEEK_DAYS.includes(s.restDay) ? s.restDay : DEFAULT_REST_DAY;
-    s.workoutTemplates = WEEK_DAYS.filter((d) => d !== srcRest).map((d) => deepCopy(srcPlan[d] || { focus: "Workout", exercises: [] }));
-  }
-  while (s.workoutTemplates.length < 6) s.workoutTemplates.push({ focus: "Workout", exercises: [] });
-  s.workoutTemplates = s.workoutTemplates.slice(0, 6);
-  s.workoutTemplates.forEach(normalizeRoutine);
+  if (!Array.isArray(s.workoutLibrary) || !s.workoutLibrary.length) migrateFromTemplates(s);
+  s.workoutLibrary = (s.workoutLibrary || []).map((w) => ({
+    id: w.id || newWorkoutId(),
+    name: w.name || w.focus || "Workout",
+    exercises: Array.isArray(w.exercises) ? w.exercises : []
+  }));
+  s.workoutLibrary.forEach((w) => normalizeExercises(w.exercises));
+  s.rotationWorkoutIds = (s.rotationWorkoutIds || s.workoutLibrary.map((w) => w.id))
+    .filter((id) => s.workoutLibrary.some((w) => w.id === id));
+  if (!s.rotationWorkoutIds.length) s.rotationWorkoutIds = s.workoutLibrary.map((w) => w.id);
+  s.weeklyDayConfig = s.weeklyDayConfig || {};
+  Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
+    const val = s.dailyWorkoutOverrides[key];
+    if (val === "Rest") return;
+    const byId = s.workoutLibrary.find((w) => w.id === val);
+    if (byId) return;
+    const byName = s.workoutLibrary.find((w) => w.name === val);
+    if (byName) s.dailyWorkoutOverrides[key] = byName.id;
+  });
   if (WEEK_DAYS.includes(s.restDay) && s.restDay !== DEFAULT_REST_DAY) s.weekRestDayOverrides[weekKey(new Date())] = s.restDay;
   delete s.plan;
   delete s.restDay;
+  delete s.workoutTemplates;
   return s;
 }
 
@@ -125,7 +181,9 @@ function getStatePayload() {
     completedByDate: state.completedByDate,
     weekRestDayOverrides: state.weekRestDayOverrides,
     dailyWorkoutOverrides: state.dailyWorkoutOverrides,
-    workoutTemplates: state.workoutTemplates
+    workoutLibrary: state.workoutLibrary,
+    rotationWorkoutIds: state.rotationWorkoutIds,
+    weeklyDayConfig: state.weeklyDayConfig
   };
 }
 
@@ -135,7 +193,9 @@ function applyStatePayload(payload) {
   state.completedByDate = migrated.completedByDate;
   state.weekRestDayOverrides = migrated.weekRestDayOverrides;
   state.dailyWorkoutOverrides = migrated.dailyWorkoutOverrides;
-  state.workoutTemplates = migrated.workoutTemplates;
+  state.workoutLibrary = migrated.workoutLibrary;
+  state.rotationWorkoutIds = migrated.rotationWorkoutIds;
+  state.weeklyDayConfig = migrated.weeklyDayConfig;
   saveState(true);
 }
 
@@ -262,41 +322,89 @@ async function syncPull() {
   renderAll();
 }
 function getRestDayForWeek(date) { return state.weekRestDayOverrides[weekKey(date)] || DEFAULT_REST_DAY; }
-function buildPlanForDate(date) {
+
+function getWorkoutById(id) {
+  return state.workoutLibrary.find((w) => w.id === id) || null;
+}
+
+function getWorkoutByName(name) {
+  return state.workoutLibrary.find((w) => w.name === name) || null;
+}
+
+function routineFromWorkout(workout) {
+  if (!workout) return { focus: "Rest", exercises: [], workoutId: null };
+  return { focus: workout.name, exercises: deepCopy(workout.exercises), workoutId: workout.id };
+}
+
+function getRotationPool() {
+  return state.rotationWorkoutIds
+    .map((id) => getWorkoutById(id))
+    .filter(Boolean);
+}
+
+function getDayScheduleValue(dayName) {
+  const cfg = state.weeklyDayConfig[dayName];
+  if (!cfg || !cfg.mode) return SCHEDULE_ROTATE;
+  return cfg.mode;
+}
+
+function buildWeekAssignments(date) {
   const restDay = getRestDayForWeek(date);
+  const pool = getRotationPool();
+  let rotateIndex = 0;
   const plan = {};
-  let i = 0;
   WEEK_DAYS.forEach((day) => {
-    if (day === restDay) plan[day] = { focus: "Rest", exercises: [] };
-    else plan[day] = deepCopy(state.workoutTemplates[i++] || { focus: "Workout", exercises: [] });
+    if (day === restDay) {
+      plan[day] = { focus: "Rest", exercises: [], workoutId: null };
+      return;
+    }
+    const mode = getDayScheduleValue(day);
+    if (mode === SCHEDULE_REST) {
+      plan[day] = { focus: "Rest", exercises: [], workoutId: null };
+      return;
+    }
+    if (mode === "workout") {
+      const workout = getWorkoutById(state.weeklyDayConfig[day].workoutId);
+      plan[day] = routineFromWorkout(workout);
+      return;
+    }
+    const workout = pool[rotateIndex % Math.max(pool.length, 1)];
+    rotateIndex += 1;
+    plan[day] = routineFromWorkout(workout);
   });
   return plan;
 }
-function getTemplateByFocus(focus) { return state.workoutTemplates.find((t) => (t.focus || "Workout") === focus); }
+
 function getRoutineForDate(date) {
   const key = formatDateKey(date);
   const override = state.dailyWorkoutOverrides[key];
   if (override) {
-    if (override === "Rest") return { focus: "Rest", exercises: [] };
-    const template = getTemplateByFocus(override);
-    if (template) return deepCopy(template);
+    if (override === "Rest") return { focus: "Rest", exercises: [], workoutId: null };
+    const workout = getWorkoutById(override) || getWorkoutByName(override);
+    if (workout) return routineFromWorkout(workout);
   }
-  return buildPlanForDate(date)[dayNameFromDate(date)];
+  return buildWeekAssignments(date)[dayNameFromDate(date)];
 }
+
 function getDateForDayInCurrentWeek(dayName) {
   const base = startOfWeek(new Date());
   const out = new Date(base);
   out.setDate(base.getDate() + Math.max(WEEK_DAYS.indexOf(dayName), 0));
   return out;
 }
+
 function workoutOptions() {
-  const seen = new Set();
-  const options = [];
-  state.workoutTemplates.forEach((template) => {
-    const focus = template.focus || "Workout";
-    if (!seen.has(focus)) { seen.add(focus); options.push(focus); }
-  });
-  return options;
+  return state.workoutLibrary.map((w) => ({ id: w.id, name: w.name }));
+}
+
+function createWorkout(name) {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const workout = { id: newWorkoutId(), name: trimmed, exercises: [] };
+  state.workoutLibrary.push(workout);
+  state.rotationWorkoutIds.push(workout.id);
+  saveState();
+  return workout;
 }
 
 function formatExerciseInfo(exercise) {
@@ -395,57 +503,195 @@ function renderUpcoming() {
   ui.toggleUpcomingPreviewBtn.setAttribute("aria-expanded", String(showPreview));
 }
 
+function fillWorkoutSelect(select, { includeRest, includeCreateNew }) {
+  const prev = select.value;
+  select.innerHTML = "";
+  if (includeRest) {
+    const restOption = document.createElement("option");
+    restOption.value = "Rest";
+    restOption.textContent = "Rest";
+    select.appendChild(restOption);
+  }
+  workoutOptions().forEach(({ id, name }) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = name;
+    select.appendChild(option);
+  });
+  if (includeCreateNew) {
+    const createOption = document.createElement("option");
+    createOption.value = CREATE_WORKOUT_VALUE;
+    createOption.textContent = "+ Create new workout…";
+    select.appendChild(createOption);
+  }
+  if (prev && [...select.options].some((o) => o.value === prev)) select.value = prev;
+}
+
+function renderRotationList() {
+  ui.rotationWorkoutList.innerHTML = "";
+  if (!state.workoutLibrary.length) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No workouts yet. Create one below when adding an exercise.";
+    ui.rotationWorkoutList.appendChild(p);
+    return;
+  }
+  state.workoutLibrary.forEach((workout) => {
+    const row = document.createElement("div");
+    row.className = "rotation-item";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.rotationWorkoutIds.includes(workout.id);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        if (!state.rotationWorkoutIds.includes(workout.id)) state.rotationWorkoutIds.push(workout.id);
+      } else {
+        state.rotationWorkoutIds = state.rotationWorkoutIds.filter((id) => id !== workout.id);
+      }
+      saveState();
+      renderWeeklySchedule();
+      renderHomeAndWorkout();
+      renderUpcoming();
+      renderSpecificDayOverride();
+      renderTodayWorkoutPicker();
+    });
+    const label = document.createElement("label");
+    label.textContent = `${workout.name} (${workout.exercises.length} exercises)`;
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    ui.rotationWorkoutList.appendChild(row);
+  });
+}
+
+function scheduleSelectValue(dayName) {
+  const cfg = state.weeklyDayConfig[dayName];
+  if (!cfg || !cfg.mode || cfg.mode === SCHEDULE_ROTATE) return SCHEDULE_ROTATE;
+  if (cfg.mode === SCHEDULE_REST) return SCHEDULE_REST;
+  if (cfg.mode === "workout" && cfg.workoutId) return `workout:${cfg.workoutId}`;
+  return SCHEDULE_ROTATE;
+}
+
+function renderWeeklySchedule() {
+  ui.weeklyDaySchedule.innerHTML = "";
+  const rotateLabel = getRotationPool().map((w) => w.name).join(" → ") || "(none — check workouts above)";
+  const hint = document.createElement("p");
+  hint.className = "muted";
+  hint.textContent = `Rotation order: ${rotateLabel}`;
+  ui.weeklyDaySchedule.appendChild(hint);
+  WEEK_DAYS.forEach((day) => {
+    const row = document.createElement("div");
+    row.className = "schedule-row";
+    const dayLabel = document.createElement("span");
+    dayLabel.className = "day-label";
+    dayLabel.textContent = day;
+    const select = document.createElement("select");
+    const auto = document.createElement("option");
+    auto.value = SCHEDULE_ROTATE;
+    auto.textContent = "Auto (rotation)";
+    select.appendChild(auto);
+    const rest = document.createElement("option");
+    rest.value = SCHEDULE_REST;
+    rest.textContent = "Rest";
+    select.appendChild(rest);
+    workoutOptions().forEach(({ id, name }) => {
+      const option = document.createElement("option");
+      option.value = `workout:${id}`;
+      option.textContent = `Fixed: ${name}`;
+      select.appendChild(option);
+    });
+    select.value = scheduleSelectValue(day);
+    select.addEventListener("change", () => {
+      const val = select.value;
+      if (val === SCHEDULE_ROTATE) delete state.weeklyDayConfig[day];
+      else if (val === SCHEDULE_REST) state.weeklyDayConfig[day] = { mode: SCHEDULE_REST };
+      else if (val.startsWith("workout:")) state.weeklyDayConfig[day] = { mode: "workout", workoutId: val.slice(8) };
+      saveState();
+      renderEditor();
+      renderHomeAndWorkout();
+      renderUpcoming();
+      renderSpecificDayOverride();
+      renderTodayWorkoutPicker();
+    });
+    row.appendChild(dayLabel);
+    row.appendChild(select);
+    ui.weeklyDaySchedule.appendChild(row);
+  });
+}
+
 function renderPlanPage() {
   ui.daySelect.innerHTML = "";
   ui.restDaySelect.innerHTML = "";
-  ui.addWorkoutSelect.innerHTML = "";
+  ui.editWorkoutSelect.innerHTML = "";
   WEEK_DAYS.forEach((day) => {
-    const a = document.createElement("option"); a.value = day; a.textContent = day; ui.daySelect.appendChild(a);
-    const b = document.createElement("option"); b.value = day; b.textContent = day; ui.restDaySelect.appendChild(b);
+    const a = document.createElement("option");
+    a.value = day;
+    a.textContent = day;
+    ui.daySelect.appendChild(a);
+    const b = document.createElement("option");
+    b.value = day;
+    b.textContent = day;
+    ui.restDaySelect.appendChild(b);
   });
-  workoutOptions().forEach((focus) => {
+  workoutOptions().forEach(({ id, name }) => {
     const option = document.createElement("option");
-    option.value = focus;
-    option.textContent = focus;
-    ui.addWorkoutSelect.appendChild(option);
+    option.value = id;
+    option.textContent = name;
+    ui.editWorkoutSelect.appendChild(option);
   });
+  fillWorkoutSelect(ui.addWorkoutSelect, { includeRest: false, includeCreateNew: true });
   ui.restDaySelect.value = getRestDayForWeek(new Date());
   if (!ui.daySelect.value) ui.daySelect.value = dayNameFromDate(new Date());
+  renderRotationList();
+  renderWeeklySchedule();
+  if (!ui.editWorkoutSelect.value && state.workoutLibrary[0]) ui.editWorkoutSelect.value = state.workoutLibrary[0].id;
   renderEditor();
 }
 
-function updateEditorField(templateIndex, exerciseIndex, field, value, day) {
-  state.workoutTemplates[templateIndex].exercises[exerciseIndex][field] = value;
+function updateEditorField(workoutId, exerciseIndex, field, value) {
+  const workout = getWorkoutById(workoutId);
+  if (!workout) return;
+  workout.exercises[exerciseIndex][field] = value;
   saveState();
-  if (day === dayNameFromDate(new Date())) {
-    renderHomeAndWorkout();
-  }
+  const todayRoutine = getRoutineForDate(new Date());
+  if (todayRoutine.workoutId === workoutId) renderHomeAndWorkout();
 }
 
-function bindEditorInput(input, templateIndex, exerciseIndex, field, day) {
-  const apply = () => updateEditorField(templateIndex, exerciseIndex, field, input.value.trim(), day);
+function bindEditorInput(input, workoutId, exerciseIndex, field) {
+  const apply = () => updateEditorField(workoutId, exerciseIndex, field, input.value.trim());
   input.addEventListener("input", apply);
   input.addEventListener("change", apply);
   input.addEventListener("blur", apply);
 }
 
 function renderEditor() {
-  const day = ui.daySelect.value || dayNameFromDate(new Date());
-  const routine = getRoutineForDate(getDateForDayInCurrentWeek(day));
-  ui.daySelectLabel.textContent = `Edit this day/workout (${day}: ${routine.focus})`;
+  const previewDay = ui.daySelect.value || dayNameFromDate(new Date());
+  const previewRoutine = getRoutineForDate(getDateForDayInCurrentWeek(previewDay));
+  let workoutId = ui.editWorkoutSelect.value;
+  if (!workoutId && previewRoutine.workoutId) workoutId = previewRoutine.workoutId;
+  const workout = getWorkoutById(workoutId);
+  ui.daySelectLabel.textContent = workout
+    ? `Editing: ${workout.name}`
+    : "Workout to edit";
+  const previewNote = document.createElement("p");
+  previewNote.className = "muted";
+  previewNote.textContent = `${previewDay} on your schedule: ${previewRoutine.focus}`;
   ui.editorList.innerHTML = "";
-  if (!routine.exercises.length) {
+  ui.editorList.appendChild(previewNote);
+  if (!workout) {
     const p = document.createElement("p");
     p.className = "muted";
-    p.textContent = "This day is currently rest for this week.";
+    p.textContent = "Select or create a workout to edit exercises.";
     ui.editorList.appendChild(p);
     return;
   }
-  const restDay = getRestDayForWeek(new Date());
-  const templateIndex = WEEK_DAYS.filter((d) => d !== restDay).indexOf(day);
-  if (templateIndex < 0) return;
-  const template = state.workoutTemplates[templateIndex];
-  template.exercises.forEach((exercise, index) => {
+  if (!workout.exercises.length) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No exercises yet. Add one in the form below.";
+    ui.editorList.appendChild(p);
+    return;
+  }
+  workout.exercises.forEach((exercise, index) => {
     const node = ui.editorTemplate.content.firstElementChild.cloneNode(true);
     node.querySelector(".exercise-name").textContent = exercise.name;
     const weightInput = node.querySelector(".weight-input");
@@ -454,9 +700,9 @@ function renderEditor() {
     weightInput.value = exercise.weight;
     repsInput.value = exercise.reps;
     setsInput.value = exercise.sets || "1";
-    bindEditorInput(weightInput, templateIndex, index, "weight", day);
-    bindEditorInput(repsInput, templateIndex, index, "reps", day);
-    bindEditorInput(setsInput, templateIndex, index, "sets", day);
+    bindEditorInput(weightInput, workout.id, index, "weight");
+    bindEditorInput(repsInput, workout.id, index, "reps");
+    bindEditorInput(setsInput, workout.id, index, "sets");
     ui.editorList.appendChild(node);
   });
 }
@@ -464,23 +710,34 @@ function renderEditor() {
 function renderSpecificDayOverride() {
   const now = new Date();
   if (!ui.specificDateInput.value) ui.specificDateInput.value = dateKey();
-  ui.specificWorkoutSelect.innerHTML = "";
-  const restOption = document.createElement("option");
-  restOption.value = "Rest";
-  restOption.textContent = "Rest";
-  ui.specificWorkoutSelect.appendChild(restOption);
-  workoutOptions().forEach((focus) => {
-    const option = document.createElement("option");
-    option.value = focus;
-    option.textContent = focus;
-    ui.specificWorkoutSelect.appendChild(option);
-  });
+  fillWorkoutSelect(ui.specificWorkoutSelect, { includeRest: true, includeCreateNew: false });
   const targetDate = new Date(ui.specificDateInput.value || now);
   const targetKey = formatDateKey(targetDate);
   const override = state.dailyWorkoutOverrides[targetKey];
-  if (override) ui.specificWorkoutSelect.value = override;
+  if (override) {
+    const resolved = override === "Rest" ? "Rest" : (getWorkoutById(override)?.id || override);
+    if ([...ui.specificWorkoutSelect.options].some((o) => o.value === resolved)) {
+      ui.specificWorkoutSelect.value = resolved;
+    }
+  }
   const routine = getRoutineForDate(targetDate);
   ui.specificDateSummary.textContent = `${targetKey} is set to: ${routine.focus}`;
+}
+
+function renderTodayWorkoutPicker() {
+  if (!ui.todayWorkoutSelect) return;
+  fillWorkoutSelect(ui.todayWorkoutSelect, { includeRest: true, includeCreateNew: false });
+  const todayKey = dateKey();
+  const override = state.dailyWorkoutOverrides[todayKey];
+  const routine = getRoutineForDate(new Date());
+  if (override) {
+    const resolved = override === "Rest" ? "Rest" : (getWorkoutById(override)?.id || override);
+    if ([...ui.todayWorkoutSelect.options].some((o) => o.value === resolved)) {
+      ui.todayWorkoutSelect.value = resolved;
+    }
+  } else if (routine.workoutId) {
+    ui.todayWorkoutSelect.value = routine.workoutId;
+  }
 }
 
 function renderCalendarAndStats() {
@@ -538,15 +795,57 @@ function handleRestDayChange() {
   saveState();
   renderAll();
 }
+function handleAddWorkoutSelectChange() {
+  const isCreate = ui.addWorkoutSelect.value === CREATE_WORKOUT_VALUE;
+  ui.createWorkoutPanel.classList.toggle("hidden", !isCreate);
+}
+
+function handleCreateWorkout() {
+  const workout = createWorkout(ui.newWorkoutNameInput.value);
+  if (!workout) return;
+  ui.newWorkoutNameInput.value = "";
+  ui.createWorkoutPanel.classList.add("hidden");
+  ui.addWorkoutSelect.value = workout.id;
+  ui.editWorkoutSelect.value = workout.id;
+  renderAll();
+}
+
 function handleAddExercise(event) {
   event.preventDefault();
-  const focus = ui.addWorkoutSelect.value;
-  const payload = { name: ui.exerciseNameInput.value.trim(), weight: ui.exerciseWeightInput.value.trim(), reps: ui.exerciseRepsInput.value.trim(), sets: ui.exerciseSetsInput.value.trim() || "1" };
-  if (!focus || !payload.name) return;
-  state.workoutTemplates.forEach((template) => { if ((template.focus || "Workout") === focus) template.exercises.push(payload); });
+  if (ui.addWorkoutSelect.value === CREATE_WORKOUT_VALUE) {
+    handleCreateWorkout();
+    return;
+  }
+  const workoutId = ui.addWorkoutSelect.value;
+  const workout = getWorkoutById(workoutId);
+  const payload = {
+    name: ui.exerciseNameInput.value.trim(),
+    weight: ui.exerciseWeightInput.value.trim(),
+    reps: ui.exerciseRepsInput.value.trim(),
+    sets: ui.exerciseSetsInput.value.trim() || "1"
+  };
+  if (!workout || !payload.name) return;
+  workout.exercises.push(payload);
   saveState();
-  ui.addExerciseForm.reset();
-  ui.addWorkoutSelect.value = focus;
+  ui.exerciseNameInput.value = "";
+  ui.exerciseWeightInput.value = "";
+  ui.exerciseRepsInput.value = "";
+  ui.exerciseSetsInput.value = "";
+  ui.addWorkoutSelect.value = workoutId;
+  renderAll();
+}
+
+function applyTodayWorkout() {
+  const val = ui.todayWorkoutSelect.value;
+  if (!val) return;
+  state.dailyWorkoutOverrides[dateKey()] = val;
+  saveState();
+  renderAll();
+}
+
+function clearTodayWorkout() {
+  delete state.dailyWorkoutOverrides[dateKey()];
+  saveState();
   renderAll();
 }
 function applySpecificDayWorkout() {
@@ -567,6 +866,7 @@ function renderAll() {
   renderUpcoming();
   renderPlanPage();
   renderSpecificDayOverride();
+  renderTodayWorkoutPicker();
   renderCalendarAndStats();
 }
 
@@ -587,7 +887,12 @@ function setup() {
   ui.unmarkPastDoneBtn.addEventListener("click", unmarkPastDone);
   ui.restDaySelect.addEventListener("change", handleRestDayChange);
   ui.daySelect.addEventListener("change", renderEditor);
+  ui.editWorkoutSelect.addEventListener("change", renderEditor);
+  ui.addWorkoutSelect.addEventListener("change", handleAddWorkoutSelectChange);
+  ui.createWorkoutBtn.addEventListener("click", handleCreateWorkout);
   ui.addExerciseForm.addEventListener("submit", handleAddExercise);
+  ui.applyTodayWorkoutBtn.addEventListener("click", applyTodayWorkout);
+  ui.clearTodayWorkoutBtn.addEventListener("click", clearTodayWorkout);
   ui.toggleUpcomingPreviewBtn.addEventListener("click", () => { upcomingPreviewVisible = !upcomingPreviewVisible; renderUpcoming(); });
   ui.applyDayWorkoutBtn.addEventListener("click", applySpecificDayWorkout);
   ui.clearDayWorkoutBtn.addEventListener("click", clearSpecificDayWorkout);
