@@ -414,6 +414,21 @@ function renderPlanPage() {
   renderEditor();
 }
 
+function updateEditorField(templateIndex, exerciseIndex, field, value, day) {
+  state.workoutTemplates[templateIndex].exercises[exerciseIndex][field] = value;
+  saveState();
+  if (day === dayNameFromDate(new Date())) {
+    renderHomeAndWorkout();
+  }
+}
+
+function bindEditorInput(input, templateIndex, exerciseIndex, field, day) {
+  const apply = () => updateEditorField(templateIndex, exerciseIndex, field, input.value.trim(), day);
+  input.addEventListener("input", apply);
+  input.addEventListener("change", apply);
+  input.addEventListener("blur", apply);
+}
+
 function renderEditor() {
   const day = ui.daySelect.value || dayNameFromDate(new Date());
   const routine = getRoutineForDate(getDateForDayInCurrentWeek(day));
@@ -439,9 +454,9 @@ function renderEditor() {
     weightInput.value = exercise.weight;
     repsInput.value = exercise.reps;
     setsInput.value = exercise.sets || "1";
-    weightInput.addEventListener("input", () => { template.exercises[index].weight = weightInput.value.trim(); saveState(); renderAll(); });
-    repsInput.addEventListener("input", () => { template.exercises[index].reps = repsInput.value.trim(); saveState(); renderAll(); });
-    setsInput.addEventListener("input", () => { template.exercises[index].sets = setsInput.value.trim(); saveState(); renderAll(); });
+    bindEditorInput(weightInput, templateIndex, index, "weight", day);
+    bindEditorInput(repsInput, templateIndex, index, "reps", day);
+    bindEditorInput(setsInput, templateIndex, index, "sets", day);
     ui.editorList.appendChild(node);
   });
 }
