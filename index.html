@@ -176,15 +176,20 @@
       <section id="recordsPage" class="page hidden">
         <div class="card">
           <h2>Records &amp; PRs</h2>
-          <p class="muted">Personal bests are saved when you tap <strong>Complete Workout</strong>. A <strong>PR</strong> means today’s planned weight beats your previous best.</p>
+          <p class="muted"><strong>Volume PR</strong> updates only when you beat your previous best (usually after <strong>Complete Workout</strong>). <strong>1RM</strong> is logged separately with <strong>Save 1RM</strong> on Workout or in Plan.</p>
         </div>
         <div class="card">
-          <h3>Today’s PRs</h3>
+          <h3>1 rep maxes</h3>
+          <p id="recordsOneRmSummary" class="muted"></p>
+          <div id="recordsOneRmList" class="records-list"></div>
+        </div>
+        <div class="card">
+          <h3>Today’s volume PRs</h3>
           <p id="recordsTodaySummary" class="muted"></p>
           <div id="recordsTodayList" class="records-list"></div>
         </div>
         <div class="card">
-          <h3>All personal bests</h3>
+          <h3>All volume bests</h3>
           <p id="recordsAllSummary" class="muted"></p>
           <div id="recordsAllList" class="records-list"></div>
         </div>
@@ -220,6 +225,7 @@
             <span class="exercise-title-row">
               <span class="exercise-name"></span>
               <span class="pr-badge hidden">PR</span>
+              <span class="one-rm-badge hidden">1RM</span>
             </span>
             <span class="exercise-info-short muted"></span>
           </button>
@@ -227,6 +233,14 @@
         <div class="exercise-details">
           <p class="exercise-info"></p>
           <p class="exercise-best muted hidden"></p>
+          <p class="exercise-one-rm-record muted hidden"></p>
+          <div class="one-rm-row">
+            <label>
+              Log 1RM (kg)
+              <input class="one-rm-input" type="text" inputmode="decimal" placeholder="e.g. 100" />
+            </label>
+            <button type="button" class="btn ghost save-one-rm-btn">Save 1RM</button>
+          </div>
           <p class="exercise-warmup muted hidden"></p>
           <p class="exercise-note muted hidden"></p>
           <p class="pr-detail muted hidden"></p>

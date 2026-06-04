@@ -494,7 +494,8 @@ input {
   flex-wrap: wrap;
 }
 
-.pr-badge {
+.pr-badge,
+.one-rm-badge {
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -502,6 +503,22 @@ input {
   background: #73c7ff;
   border-radius: 4px;
   padding: 2px 6px;
+}
+
+.one-rm-badge {
+  background: #c9a6ff;
+}
+
+.one-rm-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 8px;
+}
+
+.one-rm-row label {
+  margin: 0;
 }
 
 .exercise-item.is-pr {

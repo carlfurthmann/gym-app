@@ -115,7 +115,9 @@ const ui = {
   recordsTodaySummary: document.getElementById("recordsTodaySummary"),
   recordsTodayList: document.getElementById("recordsTodayList"),
   recordsAllSummary: document.getElementById("recordsAllSummary"),
-  recordsAllList: document.getElementById("recordsAllList")
+  recordsAllList: document.getElementById("recordsAllList"),
+  recordsOneRmSummary: document.getElementById("recordsOneRmSummary"),
+  recordsOneRmList: document.getElementById("recordsOneRmList")
 };
 let upcomingPreviewVisible = false;
 let showPrsOnly = false;
@@ -150,6 +152,7 @@ function normalizeExercise(exercise) {
   if (exercise.warmupWeight === undefined) exercise.warmupWeight = "";
   if (exercise.warmupReps === undefined) exercise.warmupReps = "";
   if (exercise.warmupSets === undefined) exercise.warmupSets = "";
+  if (exercise.oneRm === undefined) exercise.oneRm = "";
 }
 
 function normalizeExercises(exercises) {
@@ -378,22 +381,70 @@ function checkIsPR(exercise) {
   return vol > best.volume;
 }
 
+function mergeBestRecord(name, patch) {
+  const prev = getPersonalBest(name) || {};
+  state.personalBests[name] = { ...prev, ...patch };
+}
+
 function updatePersonalBestsFromExercises(exercises, dateKey) {
   exercises.forEach((exercise) => {
     if (isCardioExercise(exercise)) return;
     const vol = exerciseVolume(exercise);
     if (vol <= 0) return;
     const best = getPersonalBest(exercise.name);
-    if (!best || vol > best.volume) {
-      state.personalBests[exercise.name] = {
+    if (!best || vol > (best.volume || 0)) {
+      mergeBestRecord(exercise.name, {
         volume: vol,
         weight: exercise.weight,
         reps: exercise.reps,
         sets: exercise.sets,
         dateKey
-      };
+      });
     }
   });
+}
+
+function getStoredOneRm(name) {
+  const best = getPersonalBest(name);
+  return best?.oneRm ? parseFirstNumber(best.oneRm) : 0;
+}
+
+function checkIsOneRmPR(exercise) {
+  if (isCardioExercise(exercise)) return false;
+  const current = exercise.oneRm ? parseFirstNumber(exercise.oneRm) : 0;
+  if (current <= 0) return false;
+  const stored = getStoredOneRm(exercise.name);
+  if (stored <= 0) return false;
+  return current > stored;
+}
+
+function saveOneRepMax(workoutId, exerciseIndex, weightStr) {
+  const weight = parseFirstNumber(weightStr);
+  if (weight <= 0) return { ok: false, isNew: false };
+  const workout = getWorkoutById(workoutId);
+  const exercise = workout?.exercises[exerciseIndex];
+  if (!exercise || isCardioExercise(exercise)) return { ok: false, isNew: false };
+
+  const key = dateKey();
+  const stored = getStoredOneRm(exercise.name);
+  const isNew = stored <= 0 || weight > stored;
+
+  exercise.oneRm = String(weight);
+  if (isNew) {
+    mergeBestRecord(exercise.name, { oneRm: String(weight), oneRmDateKey: key });
+  } else if (!getPersonalBest(exercise.name)?.oneRm) {
+    mergeBestRecord(exercise.name, { oneRm: String(weight), oneRmDateKey: key });
+  }
+
+  saveState();
+  return { ok: true, isNew };
+}
+
+function formatOneRmLine(name) {
+  const best = getPersonalBest(name);
+  if (!best?.oneRm) return "No 1RM logged yet";
+  const date = best.oneRmDateKey ? formatSessionDate(best.oneRmDateKey) : "";
+  return `1RM record: ${best.oneRm} kg${date ? ` (${date})` : ""}`;
 }
 
 function recordWorkoutSession(date, routine) {
@@ -865,6 +916,34 @@ function renderRecordsPage() {
   const weightExercises = today.exercises.filter((e) => !isCardioExercise(e));
   const prCount = weightExercises.filter((e) => checkIsPR(e)).length;
 
+  const oneRmEntries = Object.entries(state.personalBests || {})
+    .filter(([, best]) => best.oneRm)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  if (ui.recordsOneRmSummary) {
+    ui.recordsOneRmSummary.textContent = oneRmEntries.length
+      ? `${oneRmEntries.length} exercises with a logged 1RM.`
+      : "Use Save 1RM on the Workout page after a max attempt.";
+  }
+  if (ui.recordsOneRmList) {
+    ui.recordsOneRmList.innerHTML = "";
+    if (!oneRmEntries.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "No 1RMs logged yet.";
+      ui.recordsOneRmList.appendChild(p);
+    } else {
+      oneRmEntries.forEach(([name, best]) => {
+        const row = document.createElement("article");
+        row.className = "record-row";
+        row.innerHTML = `
+          <div class="record-row-head"><span>${name}</span><span class="one-rm-badge">1RM</span></div>
+          <p class="muted">${best.oneRm} kg — ${formatSessionDate(best.oneRmDateKey || "")}</p>
+        `;
+        ui.recordsOneRmList.appendChild(row);
+      });
+    }
+  }
+
   if (ui.recordsTodaySummary) {
     ui.recordsTodaySummary.textContent = today.exercises.length
       ? `${today.focus}: ${prCount} PR${prCount === 1 ? "" : "s"} possible today (based on Plan weights).`
@@ -975,6 +1054,28 @@ function renderHomeAndWorkout() {
       bestEl.textContent = formatBestLine(best);
       bestEl.classList.remove("hidden");
     }
+    const oneRmRecordEl = node.querySelector(".exercise-one-rm-record");
+    if (oneRmRecordEl && !isCardioExercise(exercise)) {
+      oneRmRecordEl.textContent = formatOneRmLine(exercise.name);
+      oneRmRecordEl.classList.remove("hidden");
+    }
+    const oneRmInput = node.querySelector(".one-rm-input");
+    if (oneRmInput) oneRmInput.value = exercise.oneRm || "";
+    const isOneRmPr = checkIsOneRmPR(exercise);
+    if (isOneRmPr) node.querySelector(".one-rm-badge")?.classList.remove("hidden");
+    node.querySelector(".save-one-rm-btn")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!todayRoutine.workoutId) return;
+      const result = saveOneRepMax(todayRoutine.workoutId, index, oneRmInput.value);
+      if (result.ok && result.isNew) {
+        renderHomeAndWorkout();
+        renderRecordsPage();
+      } else if (result.ok) {
+        setSyncStatus("1RM saved (not higher than your record).");
+        renderHomeAndWorkout();
+        renderRecordsPage();
+      }
+    });
     const warmupEl = node.querySelector(".exercise-warmup");
     const warmupText = formatWarmupLine(exercise);
     if (warmupText) {
@@ -1375,6 +1476,29 @@ function buildEditorItem(workoutId, exercise, index) {
   noteLab.appendChild(noteInput);
   node.appendChild(noteLab);
 
+  if (!isCardio()) {
+    const oneRmLab = document.createElement("label");
+    oneRmLab.textContent = "1 rep max (kg)";
+    const oneRmInput = document.createElement("input");
+    oneRmInput.type = "text";
+    oneRmInput.inputMode = "decimal";
+    oneRmInput.value = exercise.oneRm || "";
+    oneRmInput.addEventListener("change", () => {
+      exercise.oneRm = oneRmInput.value.trim();
+      saveState();
+    });
+    oneRmInput.addEventListener("blur", () => {
+      if (exercise.oneRm) saveOneRepMax(workoutId, index, exercise.oneRm);
+      renderRecordsPage();
+    });
+    oneRmLab.appendChild(oneRmInput);
+    node.appendChild(oneRmLab);
+    const oneRmHint = document.createElement("p");
+    oneRmHint.className = "muted";
+    oneRmHint.textContent = formatOneRmLine(exercise.name);
+    node.appendChild(oneRmHint);
+  }
+
   return node;
 }
 
@@ -1516,7 +1640,8 @@ function handleAddExercise(event) {
     note: ui.exerciseNoteInput?.value.trim() || "",
     warmupWeight: "",
     warmupReps: "",
-    warmupSets: ""
+    warmupSets: "",
+    oneRm: ""
   };
   normalizeExercise(payload);
   if (!workout) return;
