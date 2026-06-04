@@ -4,22 +4,22 @@ const DEFAULT_REST_DAY = "Friday";
 const CREATE_WORKOUT_VALUE = "__create_new__";
 const SCHEDULE_ROTATE = "rotate";
 const SCHEDULE_REST = "rest";
-const WANDAS_WORKOUT_PREFIX = "Wanda's workouts · ";
+const WANDAS_WORKOUT_PREFIX = "Wandaleins workout";
 
 /** Optional prefab workouts — available to select, never added to weekly rotation by default. */
 const WANDAS_PREFAB_WORKOUTS = [
   {
     id: "wanda_legs_glutes_v1",
-    name: `${WANDAS_WORKOUT_PREFIX}Legs & Glutes`,
+    name: "Wandaleins workout",
     optional: true,
     exercises: [
       { name: "Leg press", weight: "", reps: "10-12", sets: "3" },
       { name: "Romanian deadlift", weight: "", reps: "10-12", sets: "3" },
       { name: "Hip thrust", weight: "", reps: "10-12", sets: "3" },
-      { name: "Bulgarian split squat (each leg)", weight: "", reps: "8-10", sets: "3" },
       { name: "Leg curl", weight: "", reps: "12-15", sets: "3" },
       { name: "Hip abduction machine", weight: "", reps: "12-15", sets: "3" },
-      { name: "Standing calf raise", weight: "", reps: "15-20", sets: "3" }
+      { name: "Standing calf raise", weight: "", reps: "15-20", sets: "3" },
+      { name: "Stairmaster", weight: "", reps: "15 min", sets: "1" }
     ]
   }
 ];
@@ -119,13 +119,27 @@ function newWorkoutId() {
 }
 
 function isOptionalWorkout(workout) {
-  return Boolean(workout?.optional) || (workout?.name || "").startsWith(WANDAS_WORKOUT_PREFIX);
+  const name = workout?.name || "";
+  return Boolean(workout?.optional)
+    || name === WANDAS_WORKOUT_PREFIX
+    || name.startsWith("Wanda's workouts")
+    || name.startsWith("Wandaleins");
 }
 
 function ensureWandasWorkouts(s) {
   WANDAS_PREFAB_WORKOUTS.forEach((prefab) => {
-    const exists = s.workoutLibrary.some((w) => w.id === prefab.id || w.name === prefab.name);
-    if (exists) return;
+    const existing = s.workoutLibrary.find((w) => w.id === prefab.id
+      || w.name === prefab.name
+      || w.name.startsWith("Wanda's workouts")
+      || w.name.startsWith("Wandaleins"));
+    if (existing) {
+      existing.id = prefab.id;
+      existing.name = prefab.name;
+      existing.optional = true;
+      existing.exercises = deepCopy(prefab.exercises);
+      normalizeExercises(existing.exercises);
+      return;
+    }
     s.workoutLibrary.push({
       id: prefab.id,
       name: prefab.name,
@@ -617,7 +631,7 @@ function renderRotationList() {
   if (optionalWorkouts.length) {
     const heading = document.createElement("p");
     heading.className = "muted rotation-subheading";
-    heading.textContent = "Wanda's workouts — optional, not in your rotation unless you check them";
+    heading.textContent = "Wandaleins workout — optional, not in your rotation unless you check it";
     ui.rotationWorkoutList.appendChild(heading);
     optionalWorkouts.forEach((workout) => appendRotationRow(ui.rotationWorkoutList, workout));
   }
