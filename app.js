@@ -176,7 +176,7 @@ function migrateFromTemplates(s) {
     if (!byName.has(name)) byName.set(name, { id: newWorkoutId(), name, exercises: deepCopy(template.exercises || []) });
   });
   s.workoutLibrary = [...byName.values()];
-  s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isOptionalWorkout(w)).map((w) => w.id);
+  s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isExcludedFromDefaultRotation(w)).map((w) => w.id);
   s.weeklyDayConfig = {};
   ensureWandasWorkouts(s);
   s.workoutLibrary.forEach((w) => normalizeExercises(w.exercises));
