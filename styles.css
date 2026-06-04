@@ -52,8 +52,13 @@ body {
 
 .navbar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.nav-btn {
+  font-size: 0.8rem;
+  padding: 8px 4px;
 }
 
 .nav-btn {
@@ -137,10 +142,113 @@ h2, h3, p {
   padding: 10px;
 }
 
-.exercise-main {
+.exercise-header {
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.exercise-summary-btn {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.exercise-info-short {
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.expand-toggle {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #130f20;
+  color: #b7e2ff;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.exercise-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-left: 42px;
+}
+
+.exercise-item.collapsed .exercise-details {
+  display: none;
+}
+
+.exercise-item.collapsed .expand-toggle {
+  transform: rotate(-90deg);
+}
+
+.exercise-best {
+  margin: 4px 0 0;
+}
+
+.workout-toolbar {
+  margin-bottom: 12px;
+}
+
+.guide-steps {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.guide-step-btn {
+  text-align: left;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.guide-step-btn:hover {
+  border-color: #73c7ff;
+}
+
+#goToWorkoutBtn {
+  margin-top: 10px;
+}
+
+.records-list {
+  display: grid;
+  gap: 8px;
+}
+
+.record-row {
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.record-row.is-pr {
+  border-color: #73c7ff;
+}
+
+.record-row-head {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  font-weight: 700;
 }
 
 .exercise-name {
@@ -519,7 +627,15 @@ input {
   }
 
   .navbar {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .nav-btn {
+    font-size: 0.75rem;
+  }
+
+  .exercise-details {
+    padding-left: 0;
   }
 
   .row {

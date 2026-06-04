@@ -18,6 +18,7 @@
         <button class="nav-btn active" data-page-target="homePage" type="button">Home</button>
         <button class="nav-btn" data-page-target="workoutPage" type="button">Workout</button>
         <button class="nav-btn" data-page-target="planPage" type="button">Plan</button>
+        <button class="nav-btn" data-page-target="recordsPage" type="button">Records</button>
         <button class="nav-btn" data-page-target="calendarPage" type="button">Calendar</button>
       </nav>
 
@@ -29,10 +30,21 @@
           <p id="dailyKgCounter" class="counter-text"></p>
           <p id="dailyCardioCounter" class="counter-text muted"></p>
         </div>
+        <div class="card guide-card">
+          <h3>New here?</h3>
+          <p class="muted">Tap a step to open that part of the app.</p>
+          <div class="guide-steps">
+            <button class="guide-step-btn" data-page-target="workoutPage" type="button">1. Workout — check off today’s exercises</button>
+            <button class="guide-step-btn" data-page-target="planPage" type="button">2. Plan — edit weights &amp; workouts</button>
+            <button class="guide-step-btn" data-page-target="recordsPage" type="button">3. Records — see PRs &amp; bests</button>
+            <button class="guide-step-btn" data-page-target="calendarPage" type="button">4. Calendar — track gym days</button>
+          </div>
+        </div>
         <div class="card">
           <h3 id="homeTodayTitle">Today</h3>
           <p id="homeTodaySubtitle" class="muted"></p>
           <p id="homeTodayCount" class="muted"></p>
+          <button id="goToWorkoutBtn" class="btn primary" type="button">Go to today’s workout</button>
         </div>
         <div class="card">
           <h3>Upcoming Day</h3>
@@ -84,6 +96,11 @@
               </div>
             </div>
             <p id="routineSubtitle"></p>
+          </div>
+          <div class="workout-toolbar top-actions">
+            <button id="showPrsOnlyBtn" class="btn ghost" type="button">Show PRs only</button>
+            <button id="expandAllExercisesBtn" class="btn ghost" type="button">Expand all</button>
+            <button id="collapseAllExercisesBtn" class="btn ghost" type="button">Collapse all</button>
           </div>
           <div id="workoutHistoryBlock" class="workout-history hidden">
             <p id="workoutHistoryTitle" class="muted"></p>
@@ -167,6 +184,23 @@
         </div>
       </section>
 
+      <section id="recordsPage" class="page hidden">
+        <div class="card">
+          <h2>Records &amp; PRs</h2>
+          <p class="muted">Personal bests are saved when you tap <strong>Complete Workout</strong>. A <strong>PR</strong> means today’s planned weight beats your previous best.</p>
+        </div>
+        <div class="card">
+          <h3>Today’s PRs</h3>
+          <p id="recordsTodaySummary" class="muted"></p>
+          <div id="recordsTodayList" class="records-list"></div>
+        </div>
+        <div class="card">
+          <h3>All personal bests</h3>
+          <p id="recordsAllSummary" class="muted"></p>
+          <div id="recordsAllList" class="records-list"></div>
+        </div>
+      </section>
+
       <section id="calendarPage" class="page hidden">
         <div class="card">
           <h3>Gym Attendance (This Month)</h3>
@@ -186,31 +220,36 @@
     </main>
 
     <template id="exerciseTemplate">
-      <article class="exercise-item">
-        <div class="exercise-main">
+      <article class="exercise-item collapsible">
+        <div class="exercise-header">
+          <button type="button" class="expand-toggle" aria-expanded="true" aria-label="Show exercise details">▾</button>
           <label class="checkbox-wrap">
             <input type="checkbox" class="done-toggle" />
             <span class="checkmark"></span>
           </label>
-          <div class="exercise-body">
-            <div class="exercise-title-row">
-              <p class="exercise-name"></p>
+          <button type="button" class="exercise-summary-btn">
+            <span class="exercise-title-row">
+              <span class="exercise-name"></span>
               <span class="pr-badge hidden">PR</span>
-            </div>
-            <p class="exercise-info"></p>
-            <p class="exercise-warmup muted hidden"></p>
-            <p class="exercise-note muted hidden"></p>
-            <p class="pr-detail muted hidden"></p>
-            <div class="timer-row">
-              <button type="button" class="btn ghost timer-btn" data-secs="60">60s</button>
-              <button type="button" class="btn ghost timer-btn" data-secs="90">90s</button>
-              <button type="button" class="btn ghost timer-btn" data-secs="120">120s</button>
-            </div>
-            <div class="timer-active hidden">
-              <span class="timer-display"></span>
-              <button type="button" class="btn ghost timer-skip">Skip</button>
-              <button type="button" class="btn ghost timer-plus">+30s</button>
-            </div>
+            </span>
+            <span class="exercise-info-short muted"></span>
+          </button>
+        </div>
+        <div class="exercise-details">
+          <p class="exercise-info"></p>
+          <p class="exercise-best muted hidden"></p>
+          <p class="exercise-warmup muted hidden"></p>
+          <p class="exercise-note muted hidden"></p>
+          <p class="pr-detail muted hidden"></p>
+          <div class="timer-row">
+            <button type="button" class="btn ghost timer-btn" data-secs="60">60s</button>
+            <button type="button" class="btn ghost timer-btn" data-secs="90">90s</button>
+            <button type="button" class="btn ghost timer-btn" data-secs="120">120s</button>
+          </div>
+          <div class="timer-active hidden">
+            <span class="timer-display"></span>
+            <button type="button" class="btn ghost timer-skip">Skip</button>
+            <button type="button" class="btn ghost timer-plus">+30s</button>
           </div>
         </div>
       </article>

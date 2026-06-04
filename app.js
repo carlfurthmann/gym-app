@@ -108,9 +108,19 @@ const ui = {
   cloudConfirmDialog: document.getElementById("cloudConfirmDialog"),
   cloudConfirmMessage: document.getElementById("cloudConfirmMessage"),
   cloudConfirmUseCloud: document.getElementById("cloudConfirmUseCloud"),
-  cloudConfirmKeepPhone: document.getElementById("cloudConfirmKeepPhone")
+  cloudConfirmKeepPhone: document.getElementById("cloudConfirmKeepPhone"),
+  showPrsOnlyBtn: document.getElementById("showPrsOnlyBtn"),
+  expandAllExercisesBtn: document.getElementById("expandAllExercisesBtn"),
+  collapseAllExercisesBtn: document.getElementById("collapseAllExercisesBtn"),
+  goToWorkoutBtn: document.getElementById("goToWorkoutBtn"),
+  recordsTodaySummary: document.getElementById("recordsTodaySummary"),
+  recordsTodayList: document.getElementById("recordsTodayList"),
+  recordsAllSummary: document.getElementById("recordsAllSummary"),
+  recordsAllList: document.getElementById("recordsAllList")
 };
 let upcomingPreviewVisible = false;
+let showPrsOnly = false;
+let exercisesExpanded = false;
 let restTimerInterval = null;
 let restTimerEndsAt = 0;
 let cloudPullPending = null;
@@ -817,14 +827,105 @@ function renderWorkoutHistory(todayRoutine) {
   };
 }
 
+function navigateToPage(pageId) {
+  ui.navButtons.forEach((b) => b.classList.toggle("active", b.dataset.pageTarget === pageId));
+  ui.pages.forEach((p) => p.classList.toggle("hidden", p.id !== pageId));
+}
+
 function renderNav() {
   ui.navButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const target = btn.dataset.pageTarget;
-      ui.navButtons.forEach((b) => b.classList.toggle("active", b === btn));
-      ui.pages.forEach((p) => p.classList.toggle("hidden", p.id !== target));
-    });
+    btn.addEventListener("click", () => navigateToPage(btn.dataset.pageTarget));
   });
+  document.querySelectorAll(".guide-step-btn").forEach((btn) => {
+    btn.addEventListener("click", () => navigateToPage(btn.dataset.pageTarget));
+  });
+}
+
+function setExerciseExpanded(node, open) {
+  node.classList.toggle("collapsed", !open);
+  const toggle = node.querySelector(".expand-toggle");
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.textContent = open ? "▾" : "▸";
+  }
+}
+
+function bindCollapsibleExercise(node) {
+  const toggle = node.querySelector(".expand-toggle");
+  const summaryBtn = node.querySelector(".exercise-summary-btn");
+  setExerciseExpanded(node, exercisesExpanded);
+  const flip = () => setExerciseExpanded(node, node.classList.contains("collapsed"));
+  if (toggle) toggle.addEventListener("click", (e) => { e.stopPropagation(); flip(); });
+  if (summaryBtn) summaryBtn.addEventListener("click", flip);
+}
+
+function formatBestLine(best) {
+  if (!best) return "No record yet — complete a workout to set a baseline";
+  return `Previous best: ${best.weight} kg × ${best.reps} × ${best.sets || "1"} (${formatSessionDate(best.dateKey)})`;
+}
+
+function renderRecordsPage() {
+  const today = getRoutineForDate(new Date());
+  const weightExercises = today.exercises.filter((e) => !isCardioExercise(e));
+  const prCount = weightExercises.filter((e) => checkIsPR(e)).length;
+
+  if (ui.recordsTodaySummary) {
+    ui.recordsTodaySummary.textContent = today.exercises.length
+      ? `${today.focus}: ${prCount} PR${prCount === 1 ? "" : "s"} possible today (based on Plan weights).`
+      : "Rest day — no exercises scheduled.";
+  }
+  if (ui.recordsTodayList) {
+    ui.recordsTodayList.innerHTML = "";
+    if (!weightExercises.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "Nothing to track today.";
+      ui.recordsTodayList.appendChild(p);
+    } else {
+      weightExercises.forEach((exercise) => {
+        const isPr = checkIsPR(exercise);
+        const best = getPersonalBest(exercise.name);
+        const row = document.createElement("article");
+        row.className = `record-row${isPr ? " is-pr" : ""}`;
+        row.innerHTML = `
+          <div class="record-row-head">
+            <span>${exercise.name}</span>
+            ${isPr ? '<span class="pr-badge">PR</span>' : ""}
+          </div>
+          <p class="muted">Today: ${formatExerciseInfo(exercise)}</p>
+          <p class="muted">${formatBestLine(best)}</p>
+          ${isPr && best ? `<p class="muted">Beat your best by ${Math.round(exerciseVolume(exercise) - best.volume)} kg volume</p>` : ""}
+        `;
+        ui.recordsTodayList.appendChild(row);
+      });
+    }
+  }
+
+  const bestEntries = Object.entries(state.personalBests || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  if (ui.recordsAllSummary) {
+    ui.recordsAllSummary.textContent = bestEntries.length
+      ? `${bestEntries.length} exercises with saved bests.`
+      : "Complete a workout to start tracking bests.";
+  }
+  if (ui.recordsAllList) {
+    ui.recordsAllList.innerHTML = "";
+    if (!bestEntries.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "No personal bests yet.";
+      ui.recordsAllList.appendChild(p);
+    } else {
+      bestEntries.forEach(([name, best]) => {
+        const row = document.createElement("article");
+        row.className = "record-row";
+        row.innerHTML = `
+          <div class="record-row-head"><span>${name}</span></div>
+          <p class="muted">${best.weight} kg × ${best.reps} × ${best.sets || "1"} — ${formatSessionDate(best.dateKey)}</p>
+        `;
+        ui.recordsAllList.appendChild(row);
+      });
+    }
+  }
 }
 
 function renderHomeAndWorkout() {
@@ -857,13 +958,27 @@ function renderHomeAndWorkout() {
 
   const todayKey = dateKey();
   const doneSet = new Set(state.doneByDate[todayKey] || []);
+  if (ui.showPrsOnlyBtn) {
+    ui.showPrsOnlyBtn.textContent = showPrsOnly ? "Show all exercises" : "Show PRs only";
+  }
+
   todayRoutine.exercises.forEach((exercise, index) => {
     normalizeExercise(exercise);
+    const isPr = !isCardioExercise(exercise) && checkIsPR(exercise);
+    if (showPrsOnly && !isPr) return;
+
     const node = ui.exerciseTemplate.content.firstElementChild.cloneNode(true);
     const id = `${todayName}-${index}`;
     const checkbox = node.querySelector(".done-toggle");
     node.querySelector(".exercise-name").textContent = exercise.name;
+    node.querySelector(".exercise-info-short").textContent = formatExerciseInfo(exercise);
     node.querySelector(".exercise-info").textContent = formatExerciseInfo(exercise);
+    const best = getPersonalBest(exercise.name);
+    const bestEl = node.querySelector(".exercise-best");
+    if (bestEl && !isCardioExercise(exercise)) {
+      bestEl.textContent = formatBestLine(best);
+      bestEl.classList.remove("hidden");
+    }
     const warmupEl = node.querySelector(".exercise-warmup");
     const warmupText = formatWarmupLine(exercise);
     if (warmupText) {
@@ -875,11 +990,9 @@ function renderHomeAndWorkout() {
       noteEl.textContent = exercise.note;
       noteEl.classList.remove("hidden");
     }
-    const isPr = checkIsPR(exercise);
     if (isPr) {
       node.classList.add("is-pr");
       node.querySelector(".pr-badge").classList.remove("hidden");
-      const best = getPersonalBest(exercise.name);
       const detail = node.querySelector(".pr-detail");
       if (best) {
         detail.textContent = `New best — was ${best.weight} kg × ${best.reps} (${formatSessionDate(best.dateKey)})`;
@@ -888,20 +1001,34 @@ function renderHomeAndWorkout() {
     }
     checkbox.checked = doneSet.has(id);
     if (checkbox.checked) node.classList.add("completed");
-    checkbox.addEventListener("change", () => {
+    checkbox.addEventListener("change", (e) => {
+      e.stopPropagation();
       const current = new Set(state.doneByDate[todayKey] || []);
       if (checkbox.checked) { current.add(id); node.classList.add("completed"); } else { current.delete(id); node.classList.remove("completed"); }
       state.doneByDate[todayKey] = [...current];
       saveState();
       renderHomeAndWorkout();
       renderCalendarAndStats();
+      renderRecordsPage();
       updateOfflineIndicator();
     });
     node.querySelectorAll(".timer-btn").forEach((btn) => {
-      btn.addEventListener("click", () => startRestTimer(node, Number(btn.dataset.secs)));
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        startRestTimer(node, Number(btn.dataset.secs));
+        setExerciseExpanded(node, true);
+      });
     });
+    bindCollapsibleExercise(node);
     ui.exerciseList.appendChild(node);
   });
+
+  if (showPrsOnly && !ui.exerciseList.children.length) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No PRs for today’s planned weights. Check Records tab or lower weights in Plan.";
+    ui.exerciseList.appendChild(p);
+  }
 }
 
 function renderUpcoming() {
@@ -1462,6 +1589,7 @@ function renderAll() {
   renderHomeAndWorkout();
   renderUpcoming();
   renderPlanPage();
+  renderRecordsPage();
   renderSpecificDayOverride();
   renderTodayWorkoutPicker();
   renderCalendarAndStats();
@@ -1512,6 +1640,19 @@ function setup() {
   ui.applyDayWorkoutBtn.addEventListener("click", applySpecificDayWorkout);
   ui.clearDayWorkoutBtn.addEventListener("click", clearSpecificDayWorkout);
   ui.specificDateInput.addEventListener("change", renderSpecificDayOverride);
+  ui.goToWorkoutBtn?.addEventListener("click", () => navigateToPage("workoutPage"));
+  ui.showPrsOnlyBtn?.addEventListener("click", () => {
+    showPrsOnly = !showPrsOnly;
+    renderHomeAndWorkout();
+  });
+  ui.expandAllExercisesBtn?.addEventListener("click", () => {
+    exercisesExpanded = true;
+    renderHomeAndWorkout();
+  });
+  ui.collapseAllExercisesBtn?.addEventListener("click", () => {
+    exercisesExpanded = false;
+    renderHomeAndWorkout();
+  });
   renderAll();
 }
 
