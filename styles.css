@@ -102,6 +102,17 @@ body {
   gap: 12px;
 }
 
+.routine-header-block {
+  margin-bottom: 4px;
+}
+
+#routineSubtitle {
+  margin: 14px 0 16px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #b7e2ff;
+}
+
 .top-actions {
   display: flex;
   gap: 8px;
@@ -514,6 +525,14 @@ input {
   .row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .routine-header-block .top-actions {
+    margin-bottom: 4px;
+  }
+
+  #routineSubtitle {
+    margin-top: 16px;
   }
 
   .editor-grid {
