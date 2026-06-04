@@ -17,7 +17,7 @@ const WANDAS_PREFAB_WORKOUTS = [
       { name: "Leg curl", weight: "", reps: "12-15", sets: "3" },
       { name: "Hip abduction machine", weight: "", reps: "12-15", sets: "3" },
       { name: "Standing calf raise", weight: "", reps: "15-20", sets: "3" },
-      { name: "Stairmaster", weight: "", reps: "15 min", sets: "1" }
+      { name: "Stairmaster", weight: "", reps: "15", sets: "1", kind: "cardio" }
     ]
   }
 ];
@@ -83,7 +83,6 @@ const ui = {
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarGrid: document.getElementById("calendarGrid"),
   exerciseTemplate: document.getElementById("exerciseTemplate"),
-  editorTemplate: document.getElementById("editorTemplate"),
   navButtons: Array.from(document.querySelectorAll(".nav-btn")),
   pages: Array.from(document.querySelectorAll(".page")),
   syncStatus: document.getElementById("syncStatus"),
@@ -96,9 +95,26 @@ const ui = {
   syncLogoutBtn: document.getElementById("syncLogoutBtn"),
   syncPullBtn: document.getElementById("syncPullBtn"),
   syncPushBtn: document.getElementById("syncPushBtn"),
-  syncUserEmail: document.getElementById("syncUserEmail")
+  syncUserEmail: document.getElementById("syncUserEmail"),
+  offlineIndicator: document.getElementById("offlineIndicator"),
+  dailyCardioCounter: document.getElementById("dailyCardioCounter"),
+  workoutHistoryBlock: document.getElementById("workoutHistoryBlock"),
+  workoutHistoryTitle: document.getElementById("workoutHistoryTitle"),
+  workoutHistoryList: document.getElementById("workoutHistoryList"),
+  copyHistoryWeightsBtn: document.getElementById("copyHistoryWeightsBtn"),
+  deleteWorkoutBtn: document.getElementById("deleteWorkoutBtn"),
+  exerciseKindInput: document.getElementById("exerciseKindInput"),
+  exerciseNoteInput: document.getElementById("exerciseNoteInput"),
+  cloudConfirmDialog: document.getElementById("cloudConfirmDialog"),
+  cloudConfirmMessage: document.getElementById("cloudConfirmMessage"),
+  cloudConfirmUseCloud: document.getElementById("cloudConfirmUseCloud"),
+  cloudConfirmKeepPhone: document.getElementById("cloudConfirmKeepPhone")
 };
 let upcomingPreviewVisible = false;
+let restTimerInterval = null;
+let restTimerEndsAt = 0;
+let cloudPullPending = null;
+let syncPending = false;
 
 function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
 function formatDateKey(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -109,8 +125,57 @@ function parseFirstNumber(value) { const m = String(value || "").match(/-?\d+(\.
 function startOfWeek(date) { const d = new Date(date.getFullYear(), date.getMonth(), date.getDate()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
 function weekKey(date) { return formatDateKey(startOfWeek(date)); }
 
+function isCardioExercise(exercise) {
+  if (!exercise) return false;
+  if (exercise.kind === "cardio") return true;
+  const name = (exercise.name || "").toLowerCase();
+  if (/stairmaster|treadmill|elliptical|rowing|bike|cardio|walk/.test(name)) return true;
+  return /\bmin\b/i.test(String(exercise.reps || ""));
+}
+
+function normalizeExercise(exercise) {
+  if (exercise.sets === undefined || exercise.sets === null) exercise.sets = "1";
+  if (isCardioExercise(exercise)) exercise.kind = "cardio";
+  else if (!exercise.kind) exercise.kind = "weights";
+  if (exercise.note === undefined) exercise.note = "";
+  if (exercise.warmupWeight === undefined) exercise.warmupWeight = "";
+  if (exercise.warmupReps === undefined) exercise.warmupReps = "";
+  if (exercise.warmupSets === undefined) exercise.warmupSets = "";
+}
+
 function normalizeExercises(exercises) {
-  exercises.forEach((exercise) => { if (exercise.sets === undefined || exercise.sets === null) exercise.sets = "1"; });
+  exercises.forEach(normalizeExercise);
+}
+
+function exerciseVolume(exercise) {
+  if (isCardioExercise(exercise)) return 0;
+  return parseFirstNumber(exercise.weight) * parseFirstNumber(exercise.reps) * (parseFirstNumber(exercise.sets || "1") || 1);
+}
+
+function parseCardioMinutes(exercise) {
+  const fromReps = parseFirstNumber(String(exercise.reps || "").replace(/min/gi, ""));
+  if (fromReps > 0) return fromReps;
+  return parseFirstNumber(exercise.weight);
+}
+
+function formatExerciseInfo(exercise) {
+  if (isCardioExercise(exercise)) {
+    const mins = parseCardioMinutes(exercise);
+    const level = exercise.weight ? ` · level ${exercise.weight}` : "";
+    return mins ? `${mins} min${level}` : "Duration not set";
+  }
+  const weight = exercise.weight ? `${exercise.weight} kg` : "Weight not set";
+  const reps = exercise.reps ? `${exercise.reps} reps` : "Reps not set";
+  const sets = exercise.sets ? `${exercise.sets} sets` : "Sets not set";
+  return `${weight} x ${reps} x ${sets}`;
+}
+
+function formatWarmupLine(exercise) {
+  if (!exercise.warmupWeight && !exercise.warmupReps) return "";
+  const w = exercise.warmupWeight ? `${exercise.warmupWeight} kg` : "";
+  const r = exercise.warmupReps ? `${exercise.warmupReps} reps` : "";
+  const s = exercise.warmupSets ? `${exercise.warmupSets} sets` : "";
+  return `Warm-up: ${[w, r, s].filter(Boolean).join(" x ")}`;
 }
 
 function newWorkoutId() {
@@ -205,6 +270,9 @@ function migrateState(parsed) {
     s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isExcludedFromDefaultRotation(w)).map((w) => w.id);
   }
   s.weeklyDayConfig = s.weeklyDayConfig || {};
+  s.workoutSessions = Array.isArray(s.workoutSessions) ? s.workoutSessions : [];
+  s.personalBests = s.personalBests || {};
+  s.workoutLibrary.forEach((w) => w.exercises.forEach(normalizeExercise));
   Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
     const val = s.dailyWorkoutOverrides[key];
     if (val === "Rest") return;
@@ -222,6 +290,7 @@ function migrateState(parsed) {
 
 function saveState(skipCloud) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  updateOfflineIndicator();
   if (!skipCloud) scheduleCloudPush();
 }
 
@@ -233,7 +302,9 @@ function getStatePayload() {
     dailyWorkoutOverrides: state.dailyWorkoutOverrides,
     workoutLibrary: state.workoutLibrary,
     rotationWorkoutIds: state.rotationWorkoutIds,
-    weeklyDayConfig: state.weeklyDayConfig
+    weeklyDayConfig: state.weeklyDayConfig,
+    workoutSessions: state.workoutSessions,
+    personalBests: state.personalBests
   };
 }
 
@@ -246,7 +317,184 @@ function applyStatePayload(payload) {
   state.workoutLibrary = migrated.workoutLibrary;
   state.rotationWorkoutIds = migrated.rotationWorkoutIds;
   state.weeklyDayConfig = migrated.weeklyDayConfig;
+  state.workoutSessions = migrated.workoutSessions;
+  state.personalBests = migrated.personalBests;
   saveState(true);
+}
+
+function localDataSummary() {
+  const days = Object.keys(state.doneByDate || {}).length + Object.keys(state.completedByDate || {}).length;
+  return `${state.workoutLibrary.length} workouts, ${days} logged days`;
+}
+
+function hasMeaningfulLocalData() {
+  return state.workoutLibrary.length > 0
+    || Object.keys(state.doneByDate || {}).length > 0
+    || Object.keys(state.completedByDate || {}).length > 0
+    || (state.workoutSessions || []).length > 0;
+}
+
+function updateOfflineIndicator() {
+  if (!ui.offlineIndicator) return;
+  ui.offlineIndicator.classList.remove("hidden", "online", "offline", "pending", "error");
+  if (!navigator.onLine) {
+    ui.offlineIndicator.textContent = "Saved on this device — will sync when online";
+    ui.offlineIndicator.classList.add("offline");
+    return;
+  }
+  if (syncPending) {
+    ui.offlineIndicator.textContent = "Saved locally — syncing to cloud…";
+    ui.offlineIndicator.classList.add("pending");
+    return;
+  }
+  if (supabaseClient) {
+    ui.offlineIndicator.textContent = "Online — changes save to this device and cloud when logged in";
+    ui.offlineIndicator.classList.add("online");
+    return;
+  }
+  ui.offlineIndicator.textContent = "Saved on this device only (log in to sync)";
+  ui.offlineIndicator.classList.add("offline");
+}
+
+function getPersonalBest(name) {
+  return state.personalBests[name] || null;
+}
+
+function checkIsPR(exercise) {
+  if (isCardioExercise(exercise)) return false;
+  const vol = exerciseVolume(exercise);
+  if (vol <= 0) return false;
+  const best = getPersonalBest(exercise.name);
+  if (!best) return false;
+  return vol > best.volume;
+}
+
+function updatePersonalBestsFromExercises(exercises, dateKey) {
+  exercises.forEach((exercise) => {
+    if (isCardioExercise(exercise)) return;
+    const vol = exerciseVolume(exercise);
+    if (vol <= 0) return;
+    const best = getPersonalBest(exercise.name);
+    if (!best || vol > best.volume) {
+      state.personalBests[exercise.name] = {
+        volume: vol,
+        weight: exercise.weight,
+        reps: exercise.reps,
+        sets: exercise.sets,
+        dateKey
+      };
+    }
+  });
+}
+
+function recordWorkoutSession(date, routine) {
+  if (!routine.workoutId || !routine.exercises.length) return;
+  const entry = {
+    dateKey: formatDateKey(date),
+    workoutId: routine.workoutId,
+    workoutName: routine.focus,
+    exercises: deepCopy(routine.exercises)
+  };
+  state.workoutSessions = (state.workoutSessions || []).filter((s) => s.dateKey !== entry.dateKey);
+  state.workoutSessions.push(entry);
+  state.workoutSessions.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+  if (state.workoutSessions.length > 120) state.workoutSessions = state.workoutSessions.slice(0, 120);
+}
+
+function findLastSessionForWorkout(workoutId) {
+  return (state.workoutSessions || []).find((s) => s.workoutId === workoutId) || null;
+}
+
+function formatSessionDate(dateKey) {
+  const d = new Date(dateKey);
+  if (Number.isNaN(d.getTime())) return dateKey;
+  return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+}
+
+function copyLastSessionWeightsToWorkout(workoutId, session) {
+  const workout = getWorkoutById(workoutId);
+  if (!workout || !session) return false;
+  session.exercises.forEach((past, idx) => {
+    if (!workout.exercises[idx]) return;
+    const cur = workout.exercises[idx];
+    if (past.name && past.name !== cur.name) return;
+    cur.weight = past.weight;
+    cur.reps = past.reps;
+    cur.sets = past.sets;
+    cur.kind = past.kind || cur.kind;
+    cur.warmupWeight = past.warmupWeight || "";
+    cur.warmupReps = past.warmupReps || "";
+    cur.warmupSets = past.warmupSets || "";
+    cur.note = past.note || "";
+    normalizeExercise(cur);
+  });
+  saveState();
+  return true;
+}
+
+function stopRestTimer() {
+  if (restTimerInterval) clearInterval(restTimerInterval);
+  restTimerInterval = null;
+  restTimerEndsAt = 0;
+  document.querySelectorAll(".timer-active").forEach((el) => el.classList.add("hidden"));
+}
+
+function formatTimerRemaining(ms) {
+  const sec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function startRestTimer(articleEl, seconds) {
+  stopRestTimer();
+  const active = articleEl.querySelector(".timer-active");
+  const display = articleEl.querySelector(".timer-display");
+  if (!active || !display) return;
+  restTimerEndsAt = Date.now() + seconds * 1000;
+  active.classList.remove("hidden");
+  const tick = () => {
+    const left = restTimerEndsAt - Date.now();
+    display.textContent = left > 0 ? formatTimerRemaining(left) : "Done";
+    if (left <= 0) {
+      stopRestTimer();
+      if (navigator.vibrate) navigator.vibrate(200);
+    }
+  };
+  tick();
+  restTimerInterval = setInterval(tick, 250);
+  const skipBtn = active.querySelector(".timer-skip");
+  const plusBtn = active.querySelector(".timer-plus");
+  if (skipBtn) skipBtn.onclick = () => stopRestTimer();
+  if (plusBtn) plusBtn.onclick = () => { restTimerEndsAt += 30000; };
+}
+
+function deleteExerciseFromWorkout(workoutId, index) {
+  const workout = getWorkoutById(workoutId);
+  if (!workout) return;
+  workout.exercises.splice(index, 1);
+  saveState();
+  renderAll();
+}
+
+function deleteWorkoutById(workoutId) {
+  if (state.workoutLibrary.length <= 1) {
+    alert("Keep at least one workout in your library.");
+    return;
+  }
+  const workout = getWorkoutById(workoutId);
+  if (!workout) return;
+  if (!confirm(`Delete "${workout.name}"? This cannot be undone.`)) return;
+  state.workoutLibrary = state.workoutLibrary.filter((w) => w.id !== workoutId);
+  state.rotationWorkoutIds = state.rotationWorkoutIds.filter((id) => id !== workoutId);
+  Object.keys(state.weeklyDayConfig).forEach((day) => {
+    if (state.weeklyDayConfig[day]?.workoutId === workoutId) delete state.weeklyDayConfig[day];
+  });
+  Object.keys(state.dailyWorkoutOverrides).forEach((key) => {
+    if (state.dailyWorkoutOverrides[key] === workoutId) delete state.dailyWorkoutOverrides[key];
+  });
+  saveState();
+  renderAll();
 }
 
 function isSyncConfigured() {
@@ -270,6 +518,7 @@ function initSupabase() {
 
 function setSyncStatus(message) {
   if (ui.syncStatus) ui.syncStatus.textContent = message;
+  updateOfflineIndicator();
 }
 
 function updateSyncUI(session) {
@@ -313,9 +562,16 @@ async function fetchCloudState() {
 }
 
 async function pushToCloud() {
-  if (!supabaseClient) return;
+  if (!supabaseClient) return false;
+  if (!navigator.onLine) {
+    syncPending = true;
+    updateOfflineIndicator();
+    return false;
+  }
   const { data: { user } } = await supabaseClient.auth.getUser();
-  if (!user) return;
+  if (!user) return false;
+  syncPending = true;
+  updateOfflineIndicator();
   const { error } = await supabaseClient.from("gym_profiles").upsert(
     {
       user_id: user.id,
@@ -324,11 +580,13 @@ async function pushToCloud() {
     },
     { onConflict: "user_id" }
   );
+  syncPending = false;
   if (error) {
     setSyncStatus(`Cloud save failed: ${error.message}`);
-    return;
+    return false;
   }
   setSyncStatus("Saved to cloud.");
+  return true;
 }
 
 function scheduleCloudPush() {
@@ -361,15 +619,25 @@ async function syncLogout() {
   setSyncStatus("Logged out. This device keeps local data only.");
 }
 
+async function applyCloudPull(cloud) {
+  applyStatePayload(cloud);
+  setSyncStatus("Loaded from cloud.");
+  renderAll();
+}
+
 async function syncPull() {
   const cloud = await fetchCloudState();
   if (!cloud) {
     setSyncStatus("No cloud data found for this account.");
     return;
   }
-  applyStatePayload(cloud);
-  setSyncStatus("Loaded from cloud.");
-  renderAll();
+  if (hasMeaningfulLocalData()) {
+    cloudPullPending = cloud;
+    ui.cloudConfirmMessage.textContent = `Cloud backup found. This device: ${localDataSummary()}. Replace local data with cloud?`;
+    ui.cloudConfirmDialog.showModal();
+    return;
+  }
+  await applyCloudPull(cloud);
 }
 function getRestDayForWeek(date) { return state.weekRestDayOverrides[weekKey(date)] || DEFAULT_REST_DAY; }
 
@@ -487,13 +755,6 @@ function syncWorkoutNamePanel() {
   }
 }
 
-function formatExerciseInfo(exercise) {
-  const weight = exercise.weight ? `${exercise.weight} kg` : "Weight not set";
-  const reps = exercise.reps ? `${exercise.reps} reps` : "Reps not set";
-  const sets = exercise.sets ? `${exercise.sets} sets` : "Sets not set";
-  return `${weight} x ${reps} x ${sets}`;
-}
-
 function computeTotalKgForDate(date, routine) {
   const key = formatDateKey(date);
   const doneSet = new Set(state.doneByDate[key] || []);
@@ -501,9 +762,59 @@ function computeTotalKgForDate(date, routine) {
   let total = 0;
   routine.exercises.forEach((exercise, idx) => {
     if (!doneSet.has(`${dayName}-${idx}`)) return;
-    total += parseFirstNumber(exercise.weight) * parseFirstNumber(exercise.reps) * (parseFirstNumber(exercise.sets || "1") || 1);
+    if (isCardioExercise(exercise)) return;
+    total += exerciseVolume(exercise);
   });
   return Math.round(total);
+}
+
+function computeCardioMinutesForDate(date, routine) {
+  const key = formatDateKey(date);
+  const doneSet = new Set(state.doneByDate[key] || []);
+  const dayName = dayNameFromDate(date);
+  let total = 0;
+  routine.exercises.forEach((exercise, idx) => {
+    if (!doneSet.has(`${dayName}-${idx}`)) return;
+    if (!isCardioExercise(exercise)) return;
+    total += parseCardioMinutes(exercise);
+  });
+  return Math.round(total);
+}
+
+function computeMonthlyCardioMinutes(year, month) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  let total = 0;
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    total += computeCardioMinutesForDate(new Date(year, month, day), getRoutineForDate(new Date(year, month, day)));
+  }
+  return total;
+}
+
+function renderWorkoutHistory(todayRoutine) {
+  if (!ui.workoutHistoryBlock) return;
+  const last = todayRoutine.workoutId ? findLastSessionForWorkout(todayRoutine.workoutId) : null;
+  const today = dateKey();
+  const previous = last && last.dateKey !== today ? last : (state.workoutSessions || []).find(
+    (s) => s.workoutId === todayRoutine.workoutId && s.dateKey !== today
+  );
+  if (!previous || !todayRoutine.exercises.length) {
+    ui.workoutHistoryBlock.classList.add("hidden");
+    return;
+  }
+  ui.workoutHistoryBlock.classList.remove("hidden");
+  ui.workoutHistoryTitle.textContent = `Last time (${formatSessionDate(previous.dateKey)}): ${previous.workoutName}`;
+  ui.workoutHistoryList.innerHTML = "";
+  previous.exercises.forEach((ex) => {
+    const line = document.createElement("p");
+    line.className = "history-line";
+    line.textContent = `${ex.name} — ${formatExerciseInfo(ex)}`;
+    ui.workoutHistoryList.appendChild(line);
+  });
+  ui.copyHistoryWeightsBtn.onclick = () => {
+    if (todayRoutine.workoutId && copyLastSessionWeightsToWorkout(todayRoutine.workoutId, previous)) {
+      renderAll();
+    }
+  };
 }
 
 function renderNav() {
@@ -524,10 +835,17 @@ function renderHomeAndWorkout() {
   ui.homeTodayTitle.textContent = `${todayName}: ${todayRoutine.focus}`;
   ui.homeTodaySubtitle.textContent = todayRoutine.exercises.length ? "Your scheduled workout is ready." : "Rest and recover.";
   ui.homeTodayCount.textContent = `Exercises: ${todayRoutine.exercises.length}`;
-  ui.dailyKgCounter.textContent = `Today's lifted total: ${computeTotalKgForDate(today, todayRoutine)} kg`;
+  const kg = computeTotalKgForDate(today, todayRoutine);
+  const cardio = computeCardioMinutesForDate(today, todayRoutine);
+  ui.dailyKgCounter.textContent = `Today's lifted total: ${kg} kg`;
+  if (ui.dailyCardioCounter) {
+    ui.dailyCardioCounter.textContent = cardio > 0 ? `Cardio today: ${cardio} min` : "";
+    ui.dailyCardioCounter.classList.toggle("hidden", cardio <= 0);
+  }
 
   ui.routineTitle.textContent = `${todayName} Routine`;
   ui.routineSubtitle.textContent = todayRoutine.focus;
+  renderWorkoutHistory(todayRoutine);
   ui.exerciseList.innerHTML = "";
   if (!todayRoutine.exercises.length) {
     const p = document.createElement("p");
@@ -540,11 +858,34 @@ function renderHomeAndWorkout() {
   const todayKey = dateKey();
   const doneSet = new Set(state.doneByDate[todayKey] || []);
   todayRoutine.exercises.forEach((exercise, index) => {
+    normalizeExercise(exercise);
     const node = ui.exerciseTemplate.content.firstElementChild.cloneNode(true);
     const id = `${todayName}-${index}`;
     const checkbox = node.querySelector(".done-toggle");
     node.querySelector(".exercise-name").textContent = exercise.name;
     node.querySelector(".exercise-info").textContent = formatExerciseInfo(exercise);
+    const warmupEl = node.querySelector(".exercise-warmup");
+    const warmupText = formatWarmupLine(exercise);
+    if (warmupText) {
+      warmupEl.textContent = warmupText;
+      warmupEl.classList.remove("hidden");
+    }
+    const noteEl = node.querySelector(".exercise-note");
+    if (exercise.note) {
+      noteEl.textContent = exercise.note;
+      noteEl.classList.remove("hidden");
+    }
+    const isPr = checkIsPR(exercise);
+    if (isPr) {
+      node.classList.add("is-pr");
+      node.querySelector(".pr-badge").classList.remove("hidden");
+      const best = getPersonalBest(exercise.name);
+      const detail = node.querySelector(".pr-detail");
+      if (best) {
+        detail.textContent = `New best — was ${best.weight} kg × ${best.reps} (${formatSessionDate(best.dateKey)})`;
+        detail.classList.remove("hidden");
+      }
+    }
     checkbox.checked = doneSet.has(id);
     if (checkbox.checked) node.classList.add("completed");
     checkbox.addEventListener("change", () => {
@@ -552,7 +893,12 @@ function renderHomeAndWorkout() {
       if (checkbox.checked) { current.add(id); node.classList.add("completed"); } else { current.delete(id); node.classList.remove("completed"); }
       state.doneByDate[todayKey] = [...current];
       saveState();
-      renderAll();
+      renderHomeAndWorkout();
+      renderCalendarAndStats();
+      updateOfflineIndicator();
+    });
+    node.querySelectorAll(".timer-btn").forEach((btn) => {
+      btn.addEventListener("click", () => startRestTimer(node, Number(btn.dataset.secs)));
     });
     ui.exerciseList.appendChild(node);
   });
@@ -802,19 +1148,111 @@ function renderEditor() {
     return;
   }
   workout.exercises.forEach((exercise, index) => {
-    const node = ui.editorTemplate.content.firstElementChild.cloneNode(true);
-    node.querySelector(".exercise-name").textContent = exercise.name;
-    const weightInput = node.querySelector(".weight-input");
-    const repsInput = node.querySelector(".reps-input");
-    const setsInput = node.querySelector(".sets-input");
-    weightInput.value = exercise.weight;
-    repsInput.value = exercise.reps;
-    setsInput.value = exercise.sets || "1";
-    bindEditorInput(weightInput, workout.id, index, "weight");
-    bindEditorInput(repsInput, workout.id, index, "reps");
-    bindEditorInput(setsInput, workout.id, index, "sets");
-    ui.editorList.appendChild(node);
+    ui.editorList.appendChild(buildEditorItem(workout.id, exercise, index));
   });
+}
+
+function buildEditorItem(workoutId, exercise, index) {
+  normalizeExercise(exercise);
+  const node = document.createElement("article");
+  node.className = "editor-item";
+  const head = document.createElement("div");
+  head.className = "editor-item-head";
+  const nameEl = document.createElement("p");
+  nameEl.className = "exercise-name";
+  nameEl.textContent = exercise.name;
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "btn ghost danger-text";
+  removeBtn.textContent = "Remove";
+  removeBtn.addEventListener("click", () => {
+    if (confirm(`Remove "${exercise.name}" from this workout?`)) deleteExerciseFromWorkout(workoutId, index);
+  });
+  head.appendChild(nameEl);
+  head.appendChild(removeBtn);
+  node.appendChild(head);
+
+  const kindLabel = document.createElement("label");
+  kindLabel.textContent = "Type";
+  const kindSelect = document.createElement("select");
+  kindSelect.className = "kind-select";
+  ["weights", "cardio"].forEach((k) => {
+    const opt = document.createElement("option");
+    opt.value = k;
+    opt.textContent = k === "cardio" ? "Cardio (minutes)" : "Weights";
+    kindSelect.appendChild(opt);
+  });
+  kindSelect.value = exercise.kind || "weights";
+  kindSelect.addEventListener("change", () => {
+    exercise.kind = kindSelect.value;
+    saveState();
+    renderEditor();
+  });
+  kindLabel.appendChild(kindSelect);
+  node.appendChild(kindLabel);
+
+  const isCardio = () => kindSelect.value === "cardio";
+
+  const warmLabel = document.createElement("p");
+  warmLabel.className = "editor-section-label";
+  warmLabel.textContent = "Warm-up (optional)";
+  node.appendChild(warmLabel);
+  const warmGrid = document.createElement("div");
+  warmGrid.className = "editor-row-2";
+  [["warmupWeight", "Weight", exercise.warmupWeight], ["warmupReps", "Reps", exercise.warmupReps], ["warmupSets", "Sets", exercise.warmupSets]].forEach(([field, label, val]) => {
+    const lab = document.createElement("label");
+    lab.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = val || "";
+    bindEditorInput(input, workoutId, index, field);
+    lab.appendChild(input);
+    warmGrid.appendChild(lab);
+  });
+  node.appendChild(warmGrid);
+
+  const workLabel = document.createElement("p");
+  workLabel.className = "editor-section-label";
+  workLabel.textContent = "Working set";
+  node.appendChild(workLabel);
+  const workGrid = document.createElement("div");
+  workGrid.className = "editor-row-2";
+  const weightLab = document.createElement("label");
+  weightLab.textContent = isCardio() ? "Level (optional)" : "Weight (kg)";
+  const weightInput = document.createElement("input");
+  weightInput.type = "text";
+  weightInput.value = exercise.weight;
+  bindEditorInput(weightInput, workoutId, index, "weight");
+  weightLab.appendChild(weightInput);
+  const repsLab = document.createElement("label");
+  repsLab.textContent = isCardio() ? "Minutes" : "Reps";
+  const repsInput = document.createElement("input");
+  repsInput.type = "text";
+  repsInput.value = exercise.reps;
+  bindEditorInput(repsInput, workoutId, index, "reps");
+  repsLab.appendChild(repsInput);
+  const setsLab = document.createElement("label");
+  setsLab.textContent = "Sets";
+  const setsInput = document.createElement("input");
+  setsInput.type = "text";
+  setsInput.value = exercise.sets || "1";
+  bindEditorInput(setsInput, workoutId, index, "sets");
+  setsLab.appendChild(setsInput);
+  workGrid.appendChild(weightLab);
+  workGrid.appendChild(repsLab);
+  workGrid.appendChild(setsLab);
+  node.appendChild(workGrid);
+
+  const noteLab = document.createElement("label");
+  noteLab.textContent = "Note";
+  const noteInput = document.createElement("input");
+  noteInput.type = "text";
+  noteInput.value = exercise.note || "";
+  bindEditorInput(noteInput, workoutId, index, "note");
+  noteLab.appendChild(noteInput);
+  node.appendChild(noteLab);
+
+  return node;
 }
 
 function renderSpecificDayOverride() {
@@ -863,6 +1301,7 @@ function renderCalendarAndStats() {
   let attended = 0;
   let workoutDays = 0;
   let monthlyKg = 0;
+  let monthlyCardio = 0;
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = new Date(year, month, day);
     const key = formatDateKey(date);
@@ -878,6 +1317,7 @@ function renderCalendarAndStats() {
       workoutDays += 1;
       const doneSet = new Set(state.doneByDate[key] || []);
       monthlyKg += computeTotalKgForDate(date, routine);
+      monthlyCardio += computeCardioMinutesForDate(date, routine);
       if (doneSet.size > 0 || state.completedByDate[key]) {
         attended += 1;
         cell.classList.add("done");
@@ -888,10 +1328,21 @@ function renderCalendarAndStats() {
     ui.calendarGrid.appendChild(cell);
   }
   ui.monthlyAttendanceCounter.textContent = `Gym attendance this month: ${attended}/${workoutDays} workout days`;
-  ui.monthlyKgCounter.textContent = `Total lifted this month: ${monthlyKg} kg`;
+  ui.monthlyKgCounter.textContent = monthlyCardio > 0
+    ? `Total lifted this month: ${monthlyKg} kg · Cardio: ${monthlyCardio} min`
+    : `Total lifted this month: ${monthlyKg} kg`;
 }
 
-function completeTodayWorkout() { state.completedByDate[dateKey()] = true; saveState(); renderAll(); }
+function completeTodayWorkout() {
+  const today = new Date();
+  const routine = getRoutineForDate(today);
+  const key = dateKey();
+  state.completedByDate[key] = true;
+  recordWorkoutSession(today, routine);
+  updatePersonalBestsFromExercises(routine.exercises, key);
+  saveState();
+  renderAll();
+}
 function resetTodayProgress() { state.doneByDate[dateKey()] = []; saveState(); renderAll(); }
 function markPastDone() { if (ui.pastDateInput.value) { state.completedByDate[ui.pastDateInput.value] = true; saveState(); renderAll(); } }
 function unmarkPastDone() { if (ui.pastDateInput.value) { delete state.completedByDate[ui.pastDateInput.value]; saveState(); renderAll(); } }
@@ -932,12 +1383,19 @@ function handleAddExercise(event) {
     ui.addWorkoutSelect.value = workoutId;
   }
   const workout = getWorkoutById(workoutId);
+  const kind = ui.exerciseKindInput?.value || "weights";
   const payload = {
     name: ui.exerciseNameInput.value.trim(),
     weight: ui.exerciseWeightInput.value.trim(),
     reps: ui.exerciseRepsInput.value.trim(),
-    sets: ui.exerciseSetsInput.value.trim() || "1"
+    sets: ui.exerciseSetsInput.value.trim() || "1",
+    kind,
+    note: ui.exerciseNoteInput?.value.trim() || "",
+    warmupWeight: "",
+    warmupReps: "",
+    warmupSets: ""
   };
+  normalizeExercise(payload);
   if (!workout) return;
   const nameFromPanel = ui.workoutNameInput.value.trim();
   if (nameFromPanel && nameFromPanel !== workout.name) workout.name = nameFromPanel;
@@ -952,6 +1410,7 @@ function handleAddExercise(event) {
   ui.exerciseWeightInput.value = "";
   ui.exerciseRepsInput.value = "";
   ui.exerciseSetsInput.value = "";
+  if (ui.exerciseNoteInput) ui.exerciseNoteInput.value = "";
   ui.addWorkoutSelect.value = workoutId;
   renderAll();
 }
@@ -1006,6 +1465,7 @@ function renderAll() {
   renderSpecificDayOverride();
   renderTodayWorkoutPicker();
   renderCalendarAndStats();
+  updateOfflineIndicator();
 }
 
 function setup() {
@@ -1019,6 +1479,23 @@ function setup() {
   ui.syncLogoutBtn.addEventListener("click", syncLogout);
   ui.syncPullBtn.addEventListener("click", syncPull);
   ui.syncPushBtn.addEventListener("click", pushToCloud);
+  ui.deleteWorkoutBtn?.addEventListener("click", () => {
+    if (ui.editWorkoutSelect.value) deleteWorkoutById(ui.editWorkoutSelect.value);
+  });
+  ui.cloudConfirmDialog?.addEventListener("close", async () => {
+    if (ui.cloudConfirmDialog.returnValue === "cloud" && cloudPullPending) {
+      await applyCloudPull(cloudPullPending);
+      cloudPullPending = null;
+    } else if (ui.cloudConfirmDialog.returnValue === "keep") {
+      await pushToCloud();
+      setSyncStatus("Kept this device’s data and saved it to the cloud.");
+      cloudPullPending = null;
+    } else {
+      cloudPullPending = null;
+    }
+  });
+  window.addEventListener("online", () => { updateOfflineIndicator(); pushToCloud(); });
+  window.addEventListener("offline", updateOfflineIndicator);
   ui.completeWorkoutBtn.addEventListener("click", completeTodayWorkout);
   ui.resetTodayBtn.addEventListener("click", resetTodayProgress);
   ui.markPastDoneBtn.addEventListener("click", markPastDone);

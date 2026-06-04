@@ -11,6 +11,7 @@
       <header class="topbar card">
         <h1>Gym Split Tracker</h1>
         <p id="todayLabel"></p>
+        <p id="offlineIndicator" class="sync-strip muted hidden"></p>
       </header>
 
       <nav class="navbar card">
@@ -26,6 +27,7 @@
           <p id="monthlyAttendanceCounter" class="counter-text"></p>
           <p id="monthlyKgCounter" class="counter-text"></p>
           <p id="dailyKgCounter" class="counter-text"></p>
+          <p id="dailyCardioCounter" class="counter-text muted"></p>
         </div>
         <div class="card">
           <h3 id="homeTodayTitle">Today</h3>
@@ -81,6 +83,11 @@
             </div>
           </div>
           <p id="routineSubtitle"></p>
+          <div id="workoutHistoryBlock" class="workout-history hidden">
+            <p id="workoutHistoryTitle" class="muted"></p>
+            <div id="workoutHistoryList" class="history-list"></div>
+            <button id="copyHistoryWeightsBtn" class="btn ghost" type="button">Copy weights to today</button>
+          </div>
           <div id="exerciseList" class="exercise-list"></div>
         </div>
         <div class="card">
@@ -119,6 +126,7 @@
           <div class="editor-controls">
             <label id="daySelectLabel" for="editWorkoutSelect">Workout to edit</label>
             <select id="editWorkoutSelect"></select>
+            <button id="deleteWorkoutBtn" class="btn ghost danger-text" type="button">Delete this workout</button>
           </div>
           <div class="editor-controls">
             <label for="daySelect">Preview day on schedule</label>
@@ -145,6 +153,13 @@
             <input id="exerciseRepsInput" type="text" placeholder="e.g. 6 or 5,5,5" />
             <label for="exerciseSetsInput">Sets</label>
             <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="e.g. 3" />
+            <label for="exerciseKindInput">Type</label>
+            <select id="exerciseKindInput">
+              <option value="weights">Weights</option>
+              <option value="cardio">Cardio (minutes)</option>
+            </select>
+            <label for="exerciseNoteInput">Note (optional)</label>
+            <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4, felt heavy" />
             <button type="submit" class="btn primary">Add Exercise</button>
           </form>
         </div>
@@ -175,33 +190,41 @@
             <input type="checkbox" class="done-toggle" />
             <span class="checkmark"></span>
           </label>
-          <div>
-            <p class="exercise-name"></p>
+          <div class="exercise-body">
+            <div class="exercise-title-row">
+              <p class="exercise-name"></p>
+              <span class="pr-badge hidden">PR</span>
+            </div>
             <p class="exercise-info"></p>
+            <p class="exercise-warmup muted hidden"></p>
+            <p class="exercise-note muted hidden"></p>
+            <p class="pr-detail muted hidden"></p>
+            <div class="timer-row">
+              <button type="button" class="btn ghost timer-btn" data-secs="60">60s</button>
+              <button type="button" class="btn ghost timer-btn" data-secs="90">90s</button>
+              <button type="button" class="btn ghost timer-btn" data-secs="120">120s</button>
+            </div>
+            <div class="timer-active hidden">
+              <span class="timer-display"></span>
+              <button type="button" class="btn ghost timer-skip">Skip</button>
+              <button type="button" class="btn ghost timer-plus">+30s</button>
+            </div>
           </div>
         </div>
       </article>
     </template>
 
-    <template id="editorTemplate">
-      <article class="editor-item">
-        <p class="exercise-name"></p>
-        <div class="editor-grid">
-          <label>
-            Weight (kg)
-            <input class="weight-input" type="text" inputmode="decimal" />
-          </label>
-          <label>
-            Reps
-            <input class="reps-input" type="text" />
-          </label>
-          <label>
-            Sets
-            <input class="sets-input" type="text" inputmode="numeric" />
-          </label>
+    <dialog id="cloudConfirmDialog" class="confirm-dialog">
+      <form method="dialog" class="confirm-dialog-inner">
+        <h3>Replace this device’s data?</h3>
+        <p id="cloudConfirmMessage" class="muted"></p>
+        <div class="top-actions override-actions">
+          <button value="cancel" class="btn ghost" type="submit">Cancel</button>
+          <button id="cloudConfirmKeepPhone" value="keep" class="btn ghost" type="submit">Keep phone</button>
+          <button id="cloudConfirmUseCloud" value="cloud" class="btn primary" type="submit">Use cloud</button>
         </div>
-      </article>
-    </template>
+      </form>
+    </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
