@@ -198,31 +198,6 @@ h2, h3, p {
   margin-bottom: 12px;
 }
 
-.guide-steps {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.guide-step-btn {
-  text-align: left;
-  background: var(--card-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 10px 12px;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.guide-step-btn:hover {
-  border-color: #73c7ff;
-}
-
-#goToWorkoutBtn {
-  margin-top: 10px;
-}
-
 .records-list {
   display: grid;
   gap: 8px;

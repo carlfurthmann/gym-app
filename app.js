@@ -112,7 +112,6 @@ const ui = {
   showPrsOnlyBtn: document.getElementById("showPrsOnlyBtn"),
   expandAllExercisesBtn: document.getElementById("expandAllExercisesBtn"),
   collapseAllExercisesBtn: document.getElementById("collapseAllExercisesBtn"),
-  goToWorkoutBtn: document.getElementById("goToWorkoutBtn"),
   recordsTodaySummary: document.getElementById("recordsTodaySummary"),
   recordsTodayList: document.getElementById("recordsTodayList"),
   recordsAllSummary: document.getElementById("recordsAllSummary"),
@@ -834,9 +833,6 @@ function navigateToPage(pageId) {
 
 function renderNav() {
   ui.navButtons.forEach((btn) => {
-    btn.addEventListener("click", () => navigateToPage(btn.dataset.pageTarget));
-  });
-  document.querySelectorAll(".guide-step-btn").forEach((btn) => {
     btn.addEventListener("click", () => navigateToPage(btn.dataset.pageTarget));
   });
 }
@@ -1640,7 +1636,6 @@ function setup() {
   ui.applyDayWorkoutBtn.addEventListener("click", applySpecificDayWorkout);
   ui.clearDayWorkoutBtn.addEventListener("click", clearSpecificDayWorkout);
   ui.specificDateInput.addEventListener("change", renderSpecificDayOverride);
-  ui.goToWorkoutBtn?.addEventListener("click", () => navigateToPage("workoutPage"));
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;
     renderHomeAndWorkout();
