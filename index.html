@@ -128,14 +128,14 @@
         </div>
         <div class="card">
           <h3>Add New Exercise</h3>
-          <p class="muted">Add an exercise to a workout template.</p>
+          <p class="muted">Pick a workout to rename it, or choose “Create new workout” to name a new template before adding exercises.</p>
           <form id="addExerciseForm" class="add-form">
             <label for="addWorkoutSelect">Workout</label>
             <select id="addWorkoutSelect" required></select>
-            <div id="createWorkoutPanel" class="create-workout-panel hidden">
-              <label for="newWorkoutNameInput">New workout name</label>
-              <input id="newWorkoutNameInput" type="text" placeholder="e.g. Chest &amp; Arms" />
-              <button id="createWorkoutBtn" class="btn ghost" type="button">Create workout</button>
+            <div id="workoutNamePanel" class="create-workout-panel hidden">
+              <label id="workoutNameLabel" for="workoutNameInput">Workout name</label>
+              <input id="workoutNameInput" type="text" placeholder="e.g. Chest &amp; Arms" />
+              <button id="saveWorkoutNameBtn" class="btn ghost" type="button">Save name</button>
             </div>
             <label for="exerciseNameInput">Exercise Name</label>
             <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />

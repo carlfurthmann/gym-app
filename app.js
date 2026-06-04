@@ -61,9 +61,10 @@ const ui = {
   editorList: document.getElementById("editorList"),
   rotationWorkoutList: document.getElementById("rotationWorkoutList"),
   weeklyDaySchedule: document.getElementById("weeklyDaySchedule"),
-  createWorkoutPanel: document.getElementById("createWorkoutPanel"),
-  newWorkoutNameInput: document.getElementById("newWorkoutNameInput"),
-  createWorkoutBtn: document.getElementById("createWorkoutBtn"),
+  workoutNamePanel: document.getElementById("workoutNamePanel"),
+  workoutNameLabel: document.getElementById("workoutNameLabel"),
+  workoutNameInput: document.getElementById("workoutNameInput"),
+  saveWorkoutNameBtn: document.getElementById("saveWorkoutNameBtn"),
   todayWorkoutSelect: document.getElementById("todayWorkoutSelect"),
   todayPlanDayLabel: document.getElementById("todayPlanDayLabel"),
   clearTodayWorkoutBtn: document.getElementById("clearTodayWorkoutBtn"),
@@ -464,6 +465,36 @@ function createWorkout(name) {
   return workout;
 }
 
+function renameWorkout(workoutId, name) {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  const workout = getWorkoutById(workoutId);
+  if (!workout) return false;
+  workout.name = trimmed;
+  saveState();
+  return true;
+}
+
+function syncWorkoutNamePanel() {
+  const val = ui.addWorkoutSelect.value;
+  if (!val) {
+    ui.workoutNamePanel.classList.add("hidden");
+    return;
+  }
+  const isCreate = val === CREATE_WORKOUT_VALUE;
+  const workout = isCreate ? null : getWorkoutById(val);
+  if (!isCreate && !workout) {
+    ui.workoutNamePanel.classList.add("hidden");
+    return;
+  }
+  ui.workoutNamePanel.classList.remove("hidden");
+  ui.workoutNameLabel.textContent = isCreate ? "New workout name" : "Workout name";
+  ui.saveWorkoutNameBtn.textContent = isCreate ? "Create workout" : "Save name";
+  if (document.activeElement !== ui.workoutNameInput) {
+    ui.workoutNameInput.value = isCreate ? "" : workout.name;
+  }
+}
+
 function formatExerciseInfo(exercise) {
   const weight = exercise.weight ? `${exercise.weight} kg` : "Weight not set";
   const reps = exercise.reps ? `${exercise.reps} reps` : "Reps not set";
@@ -741,6 +772,7 @@ function renderPlanPage() {
   renderRotationList();
   renderWeeklySchedule();
   if (!ui.editWorkoutSelect.value && state.workoutLibrary[0]) ui.editWorkoutSelect.value = state.workoutLibrary[0].id;
+  syncWorkoutNamePanel();
   renderEditor();
 }
 
@@ -890,27 +922,34 @@ function handleRestDayChange() {
   renderAll();
 }
 function handleAddWorkoutSelectChange() {
-  const isCreate = ui.addWorkoutSelect.value === CREATE_WORKOUT_VALUE;
-  ui.createWorkoutPanel.classList.toggle("hidden", !isCreate);
+  syncWorkoutNamePanel();
 }
 
-function handleCreateWorkout() {
-  const workout = createWorkout(ui.newWorkoutNameInput.value);
-  if (!workout) return;
-  ui.newWorkoutNameInput.value = "";
-  ui.createWorkoutPanel.classList.add("hidden");
-  ui.addWorkoutSelect.value = workout.id;
-  ui.editWorkoutSelect.value = workout.id;
+function handleSaveWorkoutName() {
+  const name = ui.workoutNameInput.value;
+  if (ui.addWorkoutSelect.value === CREATE_WORKOUT_VALUE) {
+    const workout = createWorkout(name);
+    if (!workout) return;
+    ui.addWorkoutSelect.value = workout.id;
+    ui.editWorkoutSelect.value = workout.id;
+    syncWorkoutNamePanel();
+    renderAll();
+    return;
+  }
+  if (!renameWorkout(ui.addWorkoutSelect.value, name)) return;
+  ui.editWorkoutSelect.value = ui.addWorkoutSelect.value;
   renderAll();
 }
 
 function handleAddExercise(event) {
   event.preventDefault();
-  if (ui.addWorkoutSelect.value === CREATE_WORKOUT_VALUE) {
-    handleCreateWorkout();
-    return;
+  let workoutId = ui.addWorkoutSelect.value;
+  if (workoutId === CREATE_WORKOUT_VALUE) {
+    const workout = createWorkout(ui.workoutNameInput.value);
+    if (!workout) return;
+    workoutId = workout.id;
+    ui.addWorkoutSelect.value = workoutId;
   }
-  const workoutId = ui.addWorkoutSelect.value;
   const workout = getWorkoutById(workoutId);
   const payload = {
     name: ui.exerciseNameInput.value.trim(),
@@ -918,7 +957,14 @@ function handleAddExercise(event) {
     reps: ui.exerciseRepsInput.value.trim(),
     sets: ui.exerciseSetsInput.value.trim() || "1"
   };
-  if (!workout || !payload.name) return;
+  if (!workout) return;
+  const nameFromPanel = ui.workoutNameInput.value.trim();
+  if (nameFromPanel && nameFromPanel !== workout.name) workout.name = nameFromPanel;
+  if (!payload.name) {
+    if (nameFromPanel) saveState();
+    renderAll();
+    return;
+  }
   workout.exercises.push(payload);
   saveState();
   ui.exerciseNameInput.value = "";
@@ -1000,7 +1046,7 @@ function setup() {
   ui.daySelect.addEventListener("change", renderEditor);
   ui.editWorkoutSelect.addEventListener("change", renderEditor);
   ui.addWorkoutSelect.addEventListener("change", handleAddWorkoutSelectChange);
-  ui.createWorkoutBtn.addEventListener("click", handleCreateWorkout);
+  ui.saveWorkoutNameBtn.addEventListener("click", handleSaveWorkoutName);
   ui.addExerciseForm.addEventListener("submit", handleAddExercise);
   ui.todayWorkoutSelect.addEventListener("change", applyTodayWorkout);
   ui.clearTodayWorkoutBtn.addEventListener("click", clearTodayWorkout);
