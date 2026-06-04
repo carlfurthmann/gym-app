@@ -4,14 +4,12 @@ const DEFAULT_REST_DAY = "Friday";
 const CREATE_WORKOUT_VALUE = "__create_new__";
 const SCHEDULE_ROTATE = "rotate";
 const SCHEDULE_REST = "rest";
-const WANDAS_WORKOUT_PREFIX = "Wandaleins workout";
+const WANDA_PREFAB_IDS = new Set(["wanda_legs_glutes_v1"]);
 
-/** Optional prefab workouts — available to select, never added to weekly rotation by default. */
 const WANDAS_PREFAB_WORKOUTS = [
   {
     id: "wanda_legs_glutes_v1",
     name: "Wandaleins workout",
-    optional: true,
     exercises: [
       { name: "Leg press", weight: "", reps: "10-12", sets: "3" },
       { name: "Romanian deadlift", weight: "", reps: "10-12", sets: "3" },
@@ -119,12 +117,8 @@ function newWorkoutId() {
   return `w_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function isOptionalWorkout(workout) {
-  const name = workout?.name || "";
-  return Boolean(workout?.optional)
-    || name === WANDAS_WORKOUT_PREFIX
-    || name.startsWith("Wanda's workouts")
-    || name.startsWith("Wandaleins");
+function isExcludedFromDefaultRotation(workout) {
+  return WANDA_PREFAB_IDS.has(workout?.id);
 }
 
 function ensureWandasWorkouts(s) {
@@ -136,7 +130,6 @@ function ensureWandasWorkouts(s) {
     if (existing) {
       existing.id = prefab.id;
       existing.name = prefab.name;
-      existing.optional = true;
       existing.exercises = deepCopy(prefab.exercises);
       normalizeExercises(existing.exercises);
       return;
@@ -144,7 +137,6 @@ function ensureWandasWorkouts(s) {
     s.workoutLibrary.push({
       id: prefab.id,
       name: prefab.name,
-      optional: true,
       exercises: deepCopy(prefab.exercises)
     });
   });
@@ -207,10 +199,10 @@ function migrateState(parsed) {
   s.rotationWorkoutIds = (s.rotationWorkoutIds || [])
     .filter((id) => {
       const w = s.workoutLibrary.find((x) => x.id === id);
-      return w && !isOptionalWorkout(w);
+      return w && !isExcludedFromDefaultRotation(w);
     });
   if (!s.rotationWorkoutIds.length) {
-    s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isOptionalWorkout(w)).map((w) => w.id);
+    s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isExcludedFromDefaultRotation(w)).map((w) => w.id);
   }
   s.weeklyDayConfig = s.weeklyDayConfig || {};
   Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
@@ -643,29 +635,18 @@ function appendRotationRow(container, workout) {
 
 function renderRotationList() {
   ui.rotationWorkoutList.innerHTML = "";
-  const mainWorkouts = state.workoutLibrary.filter((w) => !isOptionalWorkout(w));
-  const optionalWorkouts = state.workoutLibrary.filter((w) => isOptionalWorkout(w));
-  if (!mainWorkouts.length && !optionalWorkouts.length) {
+  if (!state.workoutLibrary.length) {
     const p = document.createElement("p");
     p.className = "muted";
     p.textContent = "No workouts yet. Create one below when adding an exercise.";
     ui.rotationWorkoutList.appendChild(p);
     return;
   }
-  if (mainWorkouts.length) {
-    const heading = document.createElement("p");
-    heading.className = "muted";
-    heading.textContent = "Your workouts (weekly rotation)";
-    ui.rotationWorkoutList.appendChild(heading);
-    mainWorkouts.forEach((workout) => appendRotationRow(ui.rotationWorkoutList, workout));
-  }
-  if (optionalWorkouts.length) {
-    const heading = document.createElement("p");
-    heading.className = "muted rotation-subheading";
-    heading.textContent = "Wandaleins workout — optional, not in your rotation unless you check it";
-    ui.rotationWorkoutList.appendChild(heading);
-    optionalWorkouts.forEach((workout) => appendRotationRow(ui.rotationWorkoutList, workout));
-  }
+  const heading = document.createElement("p");
+  heading.className = "muted";
+  heading.textContent = "Check which workouts rotate through your week.";
+  ui.rotationWorkoutList.appendChild(heading);
+  state.workoutLibrary.forEach((workout) => appendRotationRow(ui.rotationWorkoutList, workout));
 }
 
 function scheduleSelectValue(dayName) {

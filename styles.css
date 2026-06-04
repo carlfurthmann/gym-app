@@ -235,10 +235,6 @@ h2, h3, p {
   margin: 0;
 }
 
-.rotation-subheading {
-  margin-top: 12px;
-}
-
 .schedule-row {
   display: grid;
   grid-template-columns: 88px 1fr;
