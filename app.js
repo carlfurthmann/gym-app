@@ -4,6 +4,25 @@ const DEFAULT_REST_DAY = "Friday";
 const CREATE_WORKOUT_VALUE = "__create_new__";
 const SCHEDULE_ROTATE = "rotate";
 const SCHEDULE_REST = "rest";
+const WANDAS_WORKOUT_PREFIX = "Wanda's workouts · ";
+
+/** Optional prefab workouts — available to select, never added to weekly rotation by default. */
+const WANDAS_PREFAB_WORKOUTS = [
+  {
+    id: "wanda_legs_glutes_v1",
+    name: `${WANDAS_WORKOUT_PREFIX}Legs & Glutes`,
+    optional: true,
+    exercises: [
+      { name: "Leg press", weight: "", reps: "10-12", sets: "3" },
+      { name: "Romanian deadlift", weight: "", reps: "10-12", sets: "3" },
+      { name: "Hip thrust", weight: "", reps: "10-12", sets: "3" },
+      { name: "Bulgarian split squat (each leg)", weight: "", reps: "8-10", sets: "3" },
+      { name: "Leg curl", weight: "", reps: "12-15", sets: "3" },
+      { name: "Hip abduction machine", weight: "", reps: "12-15", sets: "3" },
+      { name: "Standing calf raise", weight: "", reps: "15-20", sets: "3" }
+    ]
+  }
+];
 
 const DEFAULT_PLAN = {
   Monday: { focus: "Chest, Arms", exercises: [{ name: "Dumbbell press", weight: "34", reps: "5", sets: "1" }, { name: "Flies", weight: "60", reps: "6", sets: "1" }, { name: "Triceps pulldown", weight: "75", reps: "7", sets: "1" }, { name: "Skull crusher", weight: "32", reps: "8", sets: "1" }, { name: "Wall curls", weight: "20", reps: "5,5,5", sets: "1" }] },
@@ -99,6 +118,23 @@ function newWorkoutId() {
   return `w_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function isOptionalWorkout(workout) {
+  return Boolean(workout?.optional) || (workout?.name || "").startsWith(WANDAS_WORKOUT_PREFIX);
+}
+
+function ensureWandasWorkouts(s) {
+  WANDAS_PREFAB_WORKOUTS.forEach((prefab) => {
+    const exists = s.workoutLibrary.some((w) => w.id === prefab.id || w.name === prefab.name);
+    if (exists) return;
+    s.workoutLibrary.push({
+      id: prefab.id,
+      name: prefab.name,
+      optional: true,
+      exercises: deepCopy(prefab.exercises)
+    });
+  });
+}
+
 function defaultWorkoutLibrary() {
   const seen = new Set();
   const library = [];
@@ -133,8 +169,9 @@ function migrateFromTemplates(s) {
     if (!byName.has(name)) byName.set(name, { id: newWorkoutId(), name, exercises: deepCopy(template.exercises || []) });
   });
   s.workoutLibrary = [...byName.values()];
-  s.rotationWorkoutIds = s.workoutLibrary.map((w) => w.id);
+  s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isOptionalWorkout(w)).map((w) => w.id);
   s.weeklyDayConfig = {};
+  ensureWandasWorkouts(s);
   s.workoutLibrary.forEach((w) => normalizeExercises(w.exercises));
 }
 
@@ -151,9 +188,15 @@ function migrateState(parsed) {
     exercises: Array.isArray(w.exercises) ? w.exercises : []
   }));
   s.workoutLibrary.forEach((w) => normalizeExercises(w.exercises));
-  s.rotationWorkoutIds = (s.rotationWorkoutIds || s.workoutLibrary.map((w) => w.id))
-    .filter((id) => s.workoutLibrary.some((w) => w.id === id));
-  if (!s.rotationWorkoutIds.length) s.rotationWorkoutIds = s.workoutLibrary.map((w) => w.id);
+  ensureWandasWorkouts(s);
+  s.rotationWorkoutIds = (s.rotationWorkoutIds || [])
+    .filter((id) => {
+      const w = s.workoutLibrary.find((x) => x.id === id);
+      return w && !isOptionalWorkout(w);
+    });
+  if (!s.rotationWorkoutIds.length) {
+    s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isOptionalWorkout(w)).map((w) => w.id);
+  }
   s.weeklyDayConfig = s.weeklyDayConfig || {};
   Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
     const val = s.dailyWorkoutOverrides[key];
@@ -527,40 +570,57 @@ function fillWorkoutSelect(select, { includeRest, includeCreateNew }) {
   if (prev && [...select.options].some((o) => o.value === prev)) select.value = prev;
 }
 
+function appendRotationRow(container, workout) {
+  const row = document.createElement("div");
+  row.className = "rotation-item";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = state.rotationWorkoutIds.includes(workout.id);
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) {
+      if (!state.rotationWorkoutIds.includes(workout.id)) state.rotationWorkoutIds.push(workout.id);
+    } else {
+      state.rotationWorkoutIds = state.rotationWorkoutIds.filter((id) => id !== workout.id);
+    }
+    saveState();
+    renderWeeklySchedule();
+    renderHomeAndWorkout();
+    renderUpcoming();
+    renderSpecificDayOverride();
+    renderTodayWorkoutPicker();
+  });
+  const label = document.createElement("label");
+  label.textContent = `${workout.name} (${workout.exercises.length} exercises)`;
+  row.appendChild(checkbox);
+  row.appendChild(label);
+  container.appendChild(row);
+}
+
 function renderRotationList() {
   ui.rotationWorkoutList.innerHTML = "";
-  if (!state.workoutLibrary.length) {
+  const mainWorkouts = state.workoutLibrary.filter((w) => !isOptionalWorkout(w));
+  const optionalWorkouts = state.workoutLibrary.filter((w) => isOptionalWorkout(w));
+  if (!mainWorkouts.length && !optionalWorkouts.length) {
     const p = document.createElement("p");
     p.className = "muted";
     p.textContent = "No workouts yet. Create one below when adding an exercise.";
     ui.rotationWorkoutList.appendChild(p);
     return;
   }
-  state.workoutLibrary.forEach((workout) => {
-    const row = document.createElement("div");
-    row.className = "rotation-item";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = state.rotationWorkoutIds.includes(workout.id);
-    checkbox.addEventListener("change", () => {
-      if (checkbox.checked) {
-        if (!state.rotationWorkoutIds.includes(workout.id)) state.rotationWorkoutIds.push(workout.id);
-      } else {
-        state.rotationWorkoutIds = state.rotationWorkoutIds.filter((id) => id !== workout.id);
-      }
-      saveState();
-      renderWeeklySchedule();
-      renderHomeAndWorkout();
-      renderUpcoming();
-      renderSpecificDayOverride();
-      renderTodayWorkoutPicker();
-    });
-    const label = document.createElement("label");
-    label.textContent = `${workout.name} (${workout.exercises.length} exercises)`;
-    row.appendChild(checkbox);
-    row.appendChild(label);
-    ui.rotationWorkoutList.appendChild(row);
-  });
+  if (mainWorkouts.length) {
+    const heading = document.createElement("p");
+    heading.className = "muted";
+    heading.textContent = "Your workouts (weekly rotation)";
+    ui.rotationWorkoutList.appendChild(heading);
+    mainWorkouts.forEach((workout) => appendRotationRow(ui.rotationWorkoutList, workout));
+  }
+  if (optionalWorkouts.length) {
+    const heading = document.createElement("p");
+    heading.className = "muted rotation-subheading";
+    heading.textContent = "Wanda's workouts — optional, not in your rotation unless you check them";
+    ui.rotationWorkoutList.appendChild(heading);
+    optionalWorkouts.forEach((workout) => appendRotationRow(ui.rotationWorkoutList, workout));
+  }
 }
 
 function scheduleSelectValue(dayName) {
