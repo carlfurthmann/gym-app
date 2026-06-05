@@ -311,7 +311,7 @@ function migrateState(parsed) {
   };
   s.userSettings = {
     colorTheme: THEME_OPTIONS.some((t) => t.id === s.userSettings?.colorTheme) ? s.userSettings.colorTheme : "purple",
-    darkMode: Boolean(s.userSettings?.darkMode)
+    darkMode: s.userSettings?.darkMode !== undefined ? Boolean(s.userSettings.darkMode) : true
   };
   s.workoutLibrary.forEach((w) => w.exercises.forEach(normalizeExercise));
   Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
@@ -369,7 +369,7 @@ function applyStatePayload(payload) {
 }
 
 function applyUserTheme() {
-  const settings = state.userSettings || { colorTheme: "purple", darkMode: false };
+  const settings = state.userSettings || { colorTheme: "purple", darkMode: true };
   const theme = settings.colorTheme || "purple";
   const root = document.documentElement;
   root.classList.toggle("dark", Boolean(settings.darkMode));
@@ -378,7 +378,7 @@ function applyUserTheme() {
 }
 
 function setColorTheme(themeId) {
-  state.userSettings = state.userSettings || { colorTheme: "purple", darkMode: false };
+  state.userSettings = state.userSettings || { colorTheme: "purple", darkMode: true };
   state.userSettings.colorTheme = themeId;
   applyUserTheme();
   saveState();
@@ -386,7 +386,7 @@ function setColorTheme(themeId) {
 }
 
 function setDarkMode(enabled) {
-  state.userSettings = state.userSettings || { colorTheme: "purple", darkMode: false };
+  state.userSettings = state.userSettings || { colorTheme: "purple", darkMode: true };
   state.userSettings.darkMode = enabled;
   applyUserTheme();
   saveState();
