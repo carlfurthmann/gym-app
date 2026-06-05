@@ -149,6 +149,12 @@ let syncPending = false;
 function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
 function formatDateKey(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function dateKey() { return formatDateKey(new Date()); }
+function parseDateInputValue(value) {
+  if (!value) return null;
+  const parts = value.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
 function dayNameFromDate(date) { return date.toLocaleDateString("en-US", { weekday: "long" }); }
 function shortWeekdayName(date) { return date.toLocaleDateString("en-US", { weekday: "short" }); }
 function parseFirstNumber(value) { const m = String(value || "").match(/-?\d+(\.\d+)?/); return m ? Number(m[0]) : 0; }
@@ -716,11 +722,87 @@ function updateSyncUI(session) {
   updateProfileAuthLine(session);
 }
 
+function mergePersonalBestRecord(a, b) {
+  const left = a || {};
+  const right = b || {};
+  const out = { ...right, ...left };
+  const volLeft = left.volume || 0;
+  const volRight = right.volume || 0;
+  if (volRight > volLeft) {
+    out.volume = right.volume;
+    out.weight = right.weight;
+    out.reps = right.reps;
+    out.sets = right.sets;
+    out.dateKey = right.dateKey;
+  }
+  const rmLeft = parseFirstNumber(left.oneRm);
+  const rmRight = parseFirstNumber(right.oneRm);
+  if (rmRight > rmLeft) {
+    out.oneRm = right.oneRm;
+    out.oneRmDateKey = right.oneRmDateKey;
+  }
+  return out;
+}
+
+function mergeProgressPayload(local, cloud) {
+  const merged = {
+    completedByDate: {},
+    doneByDate: {},
+    personalBests: {},
+    workoutSessions: []
+  };
+  const completedKeys = new Set([
+    ...Object.keys(local.completedByDate || {}),
+    ...Object.keys(cloud.completedByDate || {})
+  ]);
+  completedKeys.forEach((key) => {
+    if (local.completedByDate?.[key] || cloud.completedByDate?.[key]) merged.completedByDate[key] = true;
+  });
+  const doneKeys = new Set([
+    ...Object.keys(local.doneByDate || {}),
+    ...Object.keys(cloud.doneByDate || {})
+  ]);
+  doneKeys.forEach((key) => {
+    const ids = [...new Set([...(local.doneByDate?.[key] || []), ...(cloud.doneByDate?.[key] || [])])];
+    if (ids.length) merged.doneByDate[key] = ids;
+  });
+  const bestNames = new Set([
+    ...Object.keys(local.personalBests || {}),
+    ...Object.keys(cloud.personalBests || {})
+  ]);
+  bestNames.forEach((name) => {
+    merged.personalBests[name] = mergePersonalBestRecord(local.personalBests?.[name], cloud.personalBests?.[name]);
+  });
+  const sessionsByDate = new Map();
+  (cloud.workoutSessions || []).forEach((session) => sessionsByDate.set(session.dateKey, session));
+  (local.workoutSessions || []).forEach((session) => sessionsByDate.set(session.dateKey, session));
+  merged.workoutSessions = [...sessionsByDate.values()].sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+  return merged;
+}
+
+function mergeStatePayloads(localPayload, cloudPayload) {
+  const local = migrateState(deepCopy(localPayload));
+  const cloud = migrateState(deepCopy(cloudPayload));
+  const progress = mergeProgressPayload(local, cloud);
+  return {
+    ...local,
+    completedByDate: progress.completedByDate,
+    doneByDate: progress.doneByDate,
+    personalBests: progress.personalBests,
+    workoutSessions: progress.workoutSessions
+  };
+}
+
 async function handlePostLoginSync() {
   const cloud = await fetchCloudState();
-  const localHasData = Object.keys(state.doneByDate || {}).length > 0
-    || Object.keys(state.completedByDate || {}).length > 0;
-  if (cloud) {
+  const localPayload = getStatePayload();
+  const localHasData = hasMeaningfulLocalData();
+  if (cloud && localHasData) {
+    applyStatePayload(mergeStatePayloads(localPayload, cloud));
+    await pushToCloud();
+    setSyncStatus("Merged this device with your cloud data.");
+    renderAll();
+  } else if (cloud) {
     applyStatePayload(cloud);
     setSyncStatus("Loaded your data from the cloud.");
     renderAll();
@@ -802,8 +884,12 @@ async function syncLogout() {
 }
 
 async function applyCloudPull(cloud) {
-  applyStatePayload(cloud);
-  setSyncStatus("Loaded from cloud.");
+  const merged = hasMeaningfulLocalData()
+    ? mergeStatePayloads(getStatePayload(), cloud)
+    : migrateState(deepCopy(cloud));
+  applyStatePayload(merged);
+  await pushToCloud();
+  setSyncStatus("Loaded from cloud and merged with this device.");
   renderAll();
 }
 
@@ -937,13 +1023,44 @@ function syncWorkoutNamePanel() {
   }
 }
 
-function computeTotalKgForDate(date, routine) {
+function isBeforeToday(date) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return dayStart < todayStart;
+}
+
+function getRoutineForDateWithHistory(date) {
   const key = formatDateKey(date);
-  const doneSet = new Set(state.doneByDate[key] || []);
+  const session = (state.workoutSessions || []).find((s) => s.dateKey === key);
+  if (session?.exercises?.length && (state.completedByDate[key] || (state.doneByDate[key] || []).length)) {
+    return {
+      focus: session.workoutName,
+      exercises: deepCopy(session.exercises),
+      workoutId: session.workoutId
+    };
+  }
+  return getRoutineForDate(date);
+}
+
+function isExerciseCountedForDate(date, routine, idx) {
+  const key = formatDateKey(date);
+  if (state.completedByDate[key]) return true;
   const dayName = dayNameFromDate(date);
+  return new Set(state.doneByDate[key] || []).has(`${dayName}-${idx}`);
+}
+
+function markAllExercisesDoneForDate(date, routine) {
+  if (!routine.exercises.length) return;
+  const key = formatDateKey(date);
+  const dayName = dayNameFromDate(date);
+  state.doneByDate[key] = routine.exercises.map((_, idx) => `${dayName}-${idx}`);
+}
+
+function computeTotalKgForDate(date, routine) {
   let total = 0;
   routine.exercises.forEach((exercise, idx) => {
-    if (!doneSet.has(`${dayName}-${idx}`)) return;
+    if (!isExerciseCountedForDate(date, routine, idx)) return;
     if (isCardioExercise(exercise)) return;
     total += exerciseVolume(exercise);
   });
@@ -951,12 +1068,9 @@ function computeTotalKgForDate(date, routine) {
 }
 
 function computeCardioMinutesForDate(date, routine) {
-  const key = formatDateKey(date);
-  const doneSet = new Set(state.doneByDate[key] || []);
-  const dayName = dayNameFromDate(date);
   let total = 0;
   routine.exercises.forEach((exercise, idx) => {
-    if (!doneSet.has(`${dayName}-${idx}`)) return;
+    if (!isExerciseCountedForDate(date, routine, idx)) return;
     if (!isCardioExercise(exercise)) return;
     total += parseCardioMinutes(exercise);
   });
@@ -1674,7 +1788,7 @@ function renderCalendarAndStats() {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = new Date(year, month, day);
     const key = formatDateKey(date);
-    const routine = getRoutineForDate(date);
+    const routine = getRoutineForDateWithHistory(date);
     const cell = document.createElement("div");
     cell.className = "calendar-cell";
     cell.tabIndex = 0;
@@ -1684,13 +1798,12 @@ function renderCalendarAndStats() {
       cell.classList.add("rest");
     } else {
       workoutDays += 1;
-      const doneSet = new Set(state.doneByDate[key] || []);
       monthlyKg += computeTotalKgForDate(date, routine);
       monthlyCardio += computeCardioMinutesForDate(date, routine);
-      if (doneSet.size > 0 || state.completedByDate[key]) {
+      if (state.completedByDate[key] || (state.doneByDate[key] || []).length > 0) {
         attended += 1;
         cell.classList.add("done");
-      } else if (date < new Date(year, month, now.getDate())) {
+      } else if (isBeforeToday(date)) {
         cell.classList.add("missed");
       }
     }
@@ -1702,19 +1815,44 @@ function renderCalendarAndStats() {
     : `Total lifted this month: ${monthlyKg} kg`;
 }
 
-function completeTodayWorkout() {
-  const today = new Date();
-  const routine = getRoutineForDate(today);
-  const key = dateKey();
+function completeWorkoutForDate(date) {
+  const routine = getRoutineForDate(date);
+  const key = formatDateKey(date);
+  if (!routine.exercises.length) return;
   state.completedByDate[key] = true;
-  recordWorkoutSession(today, routine);
+  markAllExercisesDoneForDate(date, routine);
+  recordWorkoutSession(date, routine);
   updatePersonalBestsFromExercises(routine.exercises, key);
   saveState();
   renderAll();
 }
-function resetTodayProgress() { state.doneByDate[dateKey()] = []; saveState(); renderAll(); }
-function markPastDone() { if (ui.pastDateInput.value) { state.completedByDate[ui.pastDateInput.value] = true; saveState(); renderAll(); } }
-function unmarkPastDone() { if (ui.pastDateInput.value) { delete state.completedByDate[ui.pastDateInput.value]; saveState(); renderAll(); } }
+
+function completeTodayWorkout() {
+  completeWorkoutForDate(new Date());
+}
+
+function resetTodayProgress() {
+  const key = dateKey();
+  delete state.completedByDate[key];
+  state.doneByDate[key] = [];
+  saveState();
+  renderAll();
+}
+
+function markPastDone() {
+  if (!ui.pastDateInput.value) return;
+  const date = parseDateInputValue(ui.pastDateInput.value);
+  if (!date) return;
+  completeWorkoutForDate(date);
+}
+function unmarkPastDone() {
+  if (!ui.pastDateInput.value) return;
+  const key = ui.pastDateInput.value;
+  delete state.completedByDate[key];
+  state.doneByDate[key] = [];
+  saveState();
+  renderAll();
+}
 function handleRestDayChange() {
   const wk = weekKey(new Date());
   if (ui.restDaySelect.value === DEFAULT_REST_DAY) delete state.weekRestDayOverrides[wk];
