@@ -390,10 +390,12 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     varying vec2 uv;
     void main(){
     vec2 vel = texture2D(velocity, uv).xy;
-    float lenv = clamp(length(vel) * 2.0, 0.04, 0.55);
-    vec3 c = texture2D(palette, vec2(lenv, 0.5)).rgb;
-    vec3 outRGB = mix(bgColor.rgb, c, lenv * 0.75);
-    float outA = mix(bgColor.a, 0.48, lenv);
+    float raw = length(vel) * 3.2;
+    float lenv = clamp(raw, 0.02, 0.9);
+    float display = pow(lenv, 1.4);
+    vec3 c = texture2D(palette, vec2(display * 0.72, 0.5)).rgb;
+    vec3 outRGB = mix(bgColor.rgb, c, display * 0.58);
+    float outA = mix(bgColor.a, 0.44, display);
     gl_FragColor = vec4(outRGB, outA);
 }`;
   const divergence_frag = `

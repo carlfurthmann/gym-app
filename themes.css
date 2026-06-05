@@ -6,12 +6,14 @@
   --gym-bg: #FFF7ED;
   --gym-surface: #FFFFFF;
   --gym-text: #1C0A00;
-  --glass-bg: rgba(255, 255, 255, 0.18);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.09);
 }
 
 /* === Dark mode ===================================================== */
 :root.dark {
+  --glass-card: rgba(255, 255, 255, 0.07);
   --gym-primary: #F97316;
   --gym-secondary: #FB923C;
   --gym-accent: #FDBA74;
@@ -30,8 +32,9 @@
   --gym-bg: #EFF6FF;
   --gym-surface: #FFFFFF;
   --gym-text: #0B1629;
-  --glass-bg: rgba(255, 255, 255, 0.18);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.09);
 }
 
 :root[data-theme="blue"].dark {
@@ -52,8 +55,9 @@
   --gym-bg: #FFF5F5;
   --gym-surface: #FFFFFF;
   --gym-text: #1C0000;
-  --glass-bg: rgba(255, 255, 255, 0.18);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.09);
 }
 
 :root[data-theme="red"].dark {
@@ -74,8 +78,9 @@
   --gym-bg: #F5F3FF;
   --gym-surface: #FFFFFF;
   --gym-text: #1E0A3C;
-  --glass-bg: rgba(255, 255, 255, 0.18);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.09);
 }
 
 :root[data-theme="purple"].dark {
@@ -96,8 +101,9 @@
   --gym-bg: #F0FDF4;
   --gym-surface: #FFFFFF;
   --gym-text: #052E16;
-  --glass-bg: rgba(255, 255, 255, 0.18);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.09);
 }
 
 :root[data-theme="green"].dark {
@@ -118,8 +124,9 @@
   --gym-bg: #FEFCE8;
   --gym-surface: #FFFFFF;
   --gym-text: #1A1200;
-  --glass-bg: rgba(255, 255, 255, 0.18);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.09);
 }
 
 :root[data-theme="mustard"].dark {
@@ -140,8 +147,9 @@
   --gym-bg: #FDF2F8;
   --gym-surface: #FFFFFF;
   --gym-text: #1A0510;
-  --glass-bg: rgba(255, 255, 255, 0.18);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.09);
 }
 
 :root[data-theme="pink"].dark {

@@ -75,11 +75,11 @@ function getLiquidEtherOptions() {
     resolution: mobile ? 0.28 : 0.45,
     iterationsPoisson: mobile ? 10 : 24,
     iterationsViscous: mobile ? 10 : 24,
-    mouseForce: mobile ? 6 : 8,
-    cursorSize: mobile ? 55 : 65,
+    mouseForce: mobile ? 10 : 15,
+    cursorSize: mobile ? 72 : 95,
     autoDemo: true,
     autoSpeed: 0.32,
-    autoIntensity: 1.1
+    autoIntensity: 1.3
   };
 }
 

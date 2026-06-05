@@ -35,6 +35,11 @@ body.liquid-bg-fallback {
   background: color-mix(in srgb, var(--bg) 72%, #000);
 }
 
+:root:not(.dark) body.liquid-bg-active,
+:root:not(.dark) body.liquid-bg-fallback {
+  background: color-mix(in srgb, var(--bg) 35%, transparent);
+}
+
 body.liquid-bg-fallback::before {
   content: "";
   position: fixed;
@@ -156,11 +161,11 @@ body.liquid-bg-fallback::before {
 }
 
 :root:not(.dark) .card {
-  background: var(--glass-bg);
+  background: var(--glass-card);
   border-color: var(--glass-border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(22px) saturate(1.15);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
 }
 
 .navbar {
@@ -512,10 +517,10 @@ input {
 
 :root:not(.dark) select,
 :root:not(.dark) input:not([type="checkbox"]) {
-  background: var(--glass-bg);
+  background: color-mix(in srgb, var(--glass-card) 80%, var(--glass-bg));
   border-color: var(--glass-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .editor-grid input {
@@ -798,25 +803,25 @@ input {
 }
 
 :root:not(.dark) .profile-hero {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 14%, var(--glass-bg)), var(--glass-bg));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--glass-card)), var(--glass-card));
 }
 
 :root:not(.dark) .calendar-cell {
-  background: var(--glass-bg);
+  background: var(--glass-card);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 :root:not(.dark) .calendar-cell.done {
-  background: color-mix(in srgb, var(--primary) 22%, var(--glass-bg));
+  background: color-mix(in srgb, var(--primary) 22%, var(--glass-card));
 }
 
 :root:not(.dark) .calendar-cell.missed {
-  background: color-mix(in srgb, var(--danger) 18%, var(--glass-bg));
+  background: color-mix(in srgb, var(--danger) 18%, var(--glass-card));
 }
 
 :root:not(.dark) .calendar-cell.rest {
-  background: color-mix(in srgb, var(--gym-text) 5%, var(--glass-bg));
+  background: color-mix(in srgb, var(--gym-text) 5%, var(--glass-card));
 }
 
 :root:not(.dark) .confirm-dialog {
