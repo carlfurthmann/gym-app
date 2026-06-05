@@ -180,6 +180,17 @@
                     <button id="deleteWorkoutBtn" class="btn ghost danger-text" type="button">Delete workout</button>
                   </div>
                 </div>
+                <div class="plan-exercises-section">
+                  <div class="plan-exercises-toggle-row">
+                    <button id="togglePlanExercisesBtn" class="btn ghost" type="button" aria-expanded="false">
+                      Show exercises
+                    </button>
+                    <p id="planExerciseSummary" class="muted"></p>
+                  </div>
+                  <div id="planExercisesBlock" class="plan-exercises-block hidden">
+                    <div id="editorList" class="editor-list"></div>
+                  </div>
+                </div>
                 <div class="plan-add-exercise">
                   <h4 class="plan-subheading">Add exercise</h4>
                   <form id="addExerciseForm" class="add-form">
@@ -209,17 +220,6 @@
                     <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4" />
                     <button type="submit" class="btn primary">Add exercise</button>
                   </form>
-                </div>
-                <div class="plan-exercises-section">
-                  <div class="plan-exercises-toggle-row">
-                    <button id="togglePlanExercisesBtn" class="btn ghost" type="button" aria-expanded="false">
-                      Show exercises
-                    </button>
-                    <p id="planExerciseSummary" class="muted"></p>
-                  </div>
-                  <div id="planExercisesBlock" class="plan-exercises-block hidden">
-                    <div id="editorList" class="editor-list"></div>
-                  </div>
                 </div>
               </div>
             </div>

@@ -892,11 +892,11 @@ h2, h3, p {
   margin-top: 0;
 }
 
-.plan-add-exercise {
-  margin-bottom: 20px;
+.plan-exercises-section {
+  margin-bottom: 16px;
 }
 
-.plan-exercises-section {
+.plan-add-exercise {
   padding-top: 16px;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
