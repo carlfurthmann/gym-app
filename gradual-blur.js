@@ -82,6 +82,7 @@
 
     const root = document.createElement("div");
     root.className = `gradual-blur gradual-blur-${config.target === "page" ? "page" : "parent"} ${config.className || ""}`.trim();
+    root.dataset.position = config.position;
     root.setAttribute("aria-hidden", "true");
 
     const inner = document.createElement("div");
@@ -163,6 +164,10 @@
         });
         inner.appendChild(layer);
       }
+
+      const tint = document.createElement("div");
+      tint.className = "gradual-blur-tint";
+      inner.appendChild(tint);
     }
 
     applyContainerStyle();
@@ -221,6 +226,7 @@
   window.initPageGradualBlur = function initPageGradualBlur(options) {
     const opts = options || {};
     const enabled = opts.enabled !== false;
+    const parentEl = document.getElementById("gradualBlurLayer") || document.body;
     if (window.pageGradualBlur) {
       window.pageGradualBlur.dispose();
       window.pageGradualBlur = null;
@@ -229,26 +235,27 @@
 
     const shared = {
       target: "page",
-      opacity: opts.opacity ?? 0.7,
+      opacity: opts.opacity ?? 1,
       zIndex: opts.zIndex ?? 4,
-      divCount: 6,
-      curve: "bezier"
+      divCount: 8,
+      curve: "bezier",
+      exponential: true
     };
 
     window.pageGradualBlur = {
-      top: createGradualBlur(document.body, {
+      top: createGradualBlur(parentEl, {
         ...shared,
         preset: "page-header",
         position: "top",
-        height: opts.topHeight || "7rem",
-        strength: opts.strength ?? 2.2
+        height: opts.topHeight || "11rem",
+        strength: opts.strength ?? 4.5
       }),
-      bottom: createGradualBlur(document.body, {
+      bottom: createGradualBlur(parentEl, {
         ...shared,
         preset: "page-footer",
         position: "bottom",
-        height: opts.bottomHeight || "7rem",
-        strength: opts.strength ?? 2.2
+        height: opts.bottomHeight || "11rem",
+        strength: opts.strength ?? 4.5
       }),
       dispose() {
         this.top?.dispose();

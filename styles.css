@@ -77,14 +77,50 @@ body.liquid-bg-fallback::before {
   display: none;
 }
 
+.gradual-blur-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 .gradual-blur {
   pointer-events: none;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .gradual-blur-inner {
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+}
+
+.gradual-blur-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.gradual-blur[data-position="top"] .gradual-blur-tint {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--card) 82%, transparent) 0%,
+    color-mix(in srgb, var(--card) 45%, transparent) 35%,
+    transparent 100%
+  );
+}
+
+.gradual-blur[data-position="bottom"] .gradual-blur-tint {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--card) 82%, transparent) 0%,
+    color-mix(in srgb, var(--card) 45%, transparent) 35%,
+    transparent 100%
+  );
 }
 
 .app {

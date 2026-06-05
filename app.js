@@ -105,7 +105,7 @@ function initLiquidBackground() {
   }
 
   if (typeof window.initPageGradualBlur === "function") {
-    window.initPageGradualBlur({ enabled: true, opacity: 0.75, strength: 2 });
+    window.initPageGradualBlur({ enabled: true, opacity: 1, strength: 4.5, topHeight: "11rem", bottomHeight: "11rem" });
   }
 
   if (typeof createLiquidEther !== "function" || typeof THREE === "undefined") {
@@ -2169,7 +2169,7 @@ function setup() {
   ui.liquidBackgroundToggle?.addEventListener("change", () => setLiquidBackground(ui.liquidBackgroundToggle.checked));
   initLiquidBackground();
   if (!state.userSettings?.liquidBackground && typeof window.initPageGradualBlur === "function") {
-    window.initPageGradualBlur({ enabled: true, opacity: 0.55, strength: 1.6 });
+    window.initPageGradualBlur({ enabled: true, opacity: 0.85, strength: 3, topHeight: "8rem", bottomHeight: "8rem" });
   }
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;
