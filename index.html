@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gym Split Tracker</title>
+    <link rel="stylesheet" href="themes.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -20,6 +21,7 @@
         <button class="nav-btn" data-page-target="planPage" type="button">Plan</button>
         <button class="nav-btn" data-page-target="recordsPage" type="button">Records</button>
         <button class="nav-btn" data-page-target="calendarPage" type="button">Calendar</button>
+        <button class="nav-btn" data-page-target="profilePage" type="button">Profile</button>
       </nav>
 
       <section id="homePage" class="page active-page">
@@ -40,28 +42,6 @@
           <p id="upcomingText"></p>
           <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
           <div id="upcomingPreview" class="exercise-list hidden"></div>
-        </div>
-        <div class="card" id="syncCard">
-          <h3>Cloud Sync (Supabase)</h3>
-          <p id="syncStatus" class="muted">Not connected</p>
-          <div id="syncLoggedOut">
-            <label for="syncEmail">Email</label>
-            <input id="syncEmail" type="email" autocomplete="email" placeholder="you@email.com" />
-            <label for="syncPassword">Password</label>
-            <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Password" />
-            <div class="top-actions override-actions">
-              <button id="syncLoginBtn" class="btn primary" type="button">Log in</button>
-              <button id="syncSignupBtn" class="btn ghost" type="button">Sign up</button>
-            </div>
-          </div>
-          <div id="syncLoggedIn" class="hidden">
-            <p id="syncUserEmail" class="muted"></p>
-            <div class="top-actions override-actions">
-              <button id="syncPullBtn" class="btn ghost" type="button">Load from cloud</button>
-              <button id="syncPushBtn" class="btn primary" type="button">Save to cloud</button>
-              <button id="syncLogoutBtn" class="btn ghost" type="button">Log out</button>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -195,10 +175,61 @@
         </div>
       </section>
 
+      <section id="profilePage" class="page hidden">
+        <div class="card profile-hero">
+          <h2>Profile</h2>
+          <p id="profileEmailLine" class="muted">Not signed in</p>
+          <p id="profileSummaryLine" class="counter-text"></p>
+        </div>
+        <div class="card">
+          <h3>About you</h3>
+          <label for="profileDisplayName">Display name</label>
+          <input id="profileDisplayName" type="text" placeholder="Your name" />
+          <label for="profileHeight">Height (cm)</label>
+          <input id="profileHeight" type="text" inputmode="decimal" placeholder="e.g. 175" />
+          <label for="profileBodyWeight">Body weight (kg)</label>
+          <input id="profileBodyWeight" type="text" inputmode="decimal" placeholder="e.g. 78" />
+          <label for="profileAge">Age</label>
+          <input id="profileAge" type="text" inputmode="numeric" placeholder="e.g. 28" />
+          <button id="saveProfileBtn" class="btn primary" type="button">Save profile</button>
+        </div>
+        <div class="card">
+          <h3>Appearance</h3>
+          <label class="toggle-row">
+            <span>Dark mode</span>
+            <input id="darkModeToggle" type="checkbox" />
+          </label>
+          <p class="muted">Colour theme</p>
+          <div id="themeSwatches" class="theme-grid"></div>
+        </div>
+        <div class="card" id="syncCard">
+          <h3>Account &amp; sync</h3>
+          <p id="syncStatus" class="muted">Not connected</p>
+          <div id="syncLoggedOut">
+            <label for="syncEmail">Email</label>
+            <input id="syncEmail" type="email" autocomplete="email" placeholder="you@email.com" />
+            <label for="syncPassword">Password</label>
+            <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Password" />
+            <div class="top-actions override-actions">
+              <button id="syncLoginBtn" class="btn primary" type="button">Log in</button>
+              <button id="syncSignupBtn" class="btn ghost" type="button">Sign up</button>
+            </div>
+          </div>
+          <div id="syncLoggedIn" class="hidden">
+            <p id="syncUserEmail" class="muted"></p>
+            <div class="top-actions override-actions">
+              <button id="syncPullBtn" class="btn ghost" type="button">Load from cloud</button>
+              <button id="syncPushBtn" class="btn primary" type="button">Save to cloud</button>
+              <button id="syncLogoutBtn" class="btn ghost" type="button">Log out</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="calendarPage" class="page hidden">
         <div class="card">
           <h3>Gym Attendance (This Month)</h3>
-          <p class="muted">Light blue = gym day done, pink = missed gym day, dark = rest day.</p>
+          <p class="muted">Highlighted = gym day done, red tint = missed, muted = rest day.</p>
           <div class="attendance-controls">
             <label for="pastDateInput">Mark past day as done</label>
             <input id="pastDateInput" type="date" />

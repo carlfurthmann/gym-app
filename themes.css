@@ -1,0 +1,134 @@
+/* === Light mode (default / orange) ================================= */
+:root {
+  --gym-primary: #EA580C;
+  --gym-secondary: #C2410C;
+  --gym-accent: #9A3412;
+  --gym-bg: #FFF7ED;
+  --gym-surface: #FFFFFF;
+  --gym-text: #1C0A00;
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+/* === Dark mode ===================================================== */
+:root.dark {
+  --gym-primary: #F97316;
+  --gym-secondary: #FB923C;
+  --gym-accent: #FDBA74;
+  --gym-bg: #0A0800;
+  --gym-surface: #15100A;
+  --gym-text: #FFF7ED;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.13);
+}
+
+/* === Additional colour themes ====================================== */
+:root[data-theme="blue"] {
+  --gym-primary: #2563EB;
+  --gym-secondary: #0284C7;
+  --gym-accent: #0C4A6E;
+  --gym-bg: #EFF6FF;
+  --gym-surface: #FFFFFF;
+  --gym-text: #0B1629;
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="blue"].dark {
+  --gym-primary: #93C5FD;
+  --gym-secondary: #7DD3FC;
+  --gym-accent: #BAE6FD;
+  --gym-bg: #0A1628;
+  --gym-surface: #0F1E36;
+  --gym-text: #F0F9FF;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.13);
+}
+
+:root[data-theme="red"] {
+  --gym-primary: #DC2626;
+  --gym-secondary: #B91C1C;
+  --gym-accent: #7F1D1D;
+  --gym-bg: #FFF5F5;
+  --gym-surface: #FFFFFF;
+  --gym-text: #1C0000;
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="red"].dark {
+  --gym-primary: #EF4444;
+  --gym-secondary: #F87171;
+  --gym-accent: #FCA5A5;
+  --gym-bg: #09090B;
+  --gym-surface: #111111;
+  --gym-text: #FAFAFA;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.13);
+}
+
+:root[data-theme="purple"] {
+  --gym-primary: #7C3AED;
+  --gym-secondary: #6D28D9;
+  --gym-accent: #4C1D95;
+  --gym-bg: #F5F3FF;
+  --gym-surface: #FFFFFF;
+  --gym-text: #1E0A3C;
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="purple"].dark {
+  --gym-primary: #A78BFA;
+  --gym-secondary: #8B5CF6;
+  --gym-accent: #C4B5FD;
+  --gym-bg: #0F0A1E;
+  --gym-surface: #160D2E;
+  --gym-text: #F5F3FF;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.13);
+}
+
+:root[data-theme="green"] {
+  --gym-primary: #16A34A;
+  --gym-secondary: #059669;
+  --gym-accent: #065F46;
+  --gym-bg: #F0FDF4;
+  --gym-surface: #FFFFFF;
+  --gym-text: #052E16;
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="green"].dark {
+  --gym-primary: #22C55E;
+  --gym-secondary: #10B981;
+  --gym-accent: #4ADE80;
+  --gym-bg: #0A1500;
+  --gym-surface: #0F1E0A;
+  --gym-text: #F0FDF4;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.13);
+}
+
+:root[data-theme="mustard"] {
+  --gym-primary: #CA8A04;
+  --gym-secondary: #A16207;
+  --gym-accent: #713F12;
+  --gym-bg: #FEFCE8;
+  --gym-surface: #FFFFFF;
+  --gym-text: #1A1200;
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="mustard"].dark {
+  --gym-primary: #FACC15;
+  --gym-secondary: #FDE047;
+  --gym-accent: #FEF08A;
+  --gym-bg: #0C0900;
+  --gym-surface: #130E00;
+  --gym-text: #FEFCE8;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.13);
+}

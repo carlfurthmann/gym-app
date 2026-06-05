@@ -6,6 +6,15 @@ const SCHEDULE_ROTATE = "rotate";
 const SCHEDULE_REST = "rest";
 const WANDA_PREFAB_IDS = new Set(["wanda_legs_glutes_v1"]);
 
+const THEME_OPTIONS = [
+  { id: "orange", label: "Orange", swatches: ["#EA580C", "#C2410C", "#FFF7ED"] },
+  { id: "blue", label: "Blue", swatches: ["#2563EB", "#0284C7", "#EFF6FF"] },
+  { id: "red", label: "Red", swatches: ["#DC2626", "#B91C1C", "#FFF5F5"] },
+  { id: "purple", label: "Purple", swatches: ["#7C3AED", "#6D28D9", "#F5F3FF"] },
+  { id: "green", label: "Green", swatches: ["#16A34A", "#059669", "#F0FDF4"] },
+  { id: "mustard", label: "Mustard", swatches: ["#CA8A04", "#A16207", "#FEFCE8"] }
+];
+
 const WANDAS_PREFAB_WORKOUTS = [
   {
     id: "wanda_legs_glutes_v1",
@@ -33,6 +42,7 @@ const DEFAULT_PLAN = {
 };
 
 let state = loadState();
+applyUserTheme();
 let supabaseClient = null;
 let cloudPushTimer = null;
 
@@ -117,7 +127,16 @@ const ui = {
   recordsAllSummary: document.getElementById("recordsAllSummary"),
   recordsAllList: document.getElementById("recordsAllList"),
   recordsOneRmSummary: document.getElementById("recordsOneRmSummary"),
-  recordsOneRmList: document.getElementById("recordsOneRmList")
+  recordsOneRmList: document.getElementById("recordsOneRmList"),
+  profileEmailLine: document.getElementById("profileEmailLine"),
+  profileSummaryLine: document.getElementById("profileSummaryLine"),
+  profileDisplayName: document.getElementById("profileDisplayName"),
+  profileHeight: document.getElementById("profileHeight"),
+  profileBodyWeight: document.getElementById("profileBodyWeight"),
+  profileAge: document.getElementById("profileAge"),
+  saveProfileBtn: document.getElementById("saveProfileBtn"),
+  darkModeToggle: document.getElementById("darkModeToggle"),
+  themeSwatches: document.getElementById("themeSwatches")
 };
 let upcomingPreviewVisible = false;
 let showPrsOnly = false;
@@ -284,6 +303,16 @@ function migrateState(parsed) {
   s.weeklyDayConfig = s.weeklyDayConfig || {};
   s.workoutSessions = Array.isArray(s.workoutSessions) ? s.workoutSessions : [];
   s.personalBests = s.personalBests || {};
+  s.userProfile = {
+    displayName: s.userProfile?.displayName || "",
+    heightCm: s.userProfile?.heightCm || "",
+    bodyWeightKg: s.userProfile?.bodyWeightKg || "",
+    age: s.userProfile?.age || ""
+  };
+  s.userSettings = {
+    colorTheme: THEME_OPTIONS.some((t) => t.id === s.userSettings?.colorTheme) ? s.userSettings.colorTheme : "orange",
+    darkMode: Boolean(s.userSettings?.darkMode)
+  };
   s.workoutLibrary.forEach((w) => w.exercises.forEach(normalizeExercise));
   Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
     const val = s.dailyWorkoutOverrides[key];
@@ -316,7 +345,9 @@ function getStatePayload() {
     rotationWorkoutIds: state.rotationWorkoutIds,
     weeklyDayConfig: state.weeklyDayConfig,
     workoutSessions: state.workoutSessions,
-    personalBests: state.personalBests
+    personalBests: state.personalBests,
+    userProfile: state.userProfile,
+    userSettings: state.userSettings
   };
 }
 
@@ -331,7 +362,95 @@ function applyStatePayload(payload) {
   state.weeklyDayConfig = migrated.weeklyDayConfig;
   state.workoutSessions = migrated.workoutSessions;
   state.personalBests = migrated.personalBests;
+  state.userProfile = migrated.userProfile;
+  state.userSettings = migrated.userSettings;
+  applyUserTheme();
   saveState(true);
+}
+
+function applyUserTheme() {
+  const settings = state.userSettings || { colorTheme: "orange", darkMode: false };
+  const root = document.documentElement;
+  root.classList.toggle("dark", Boolean(settings.darkMode));
+  if (!settings.colorTheme || settings.colorTheme === "orange") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", settings.colorTheme);
+}
+
+function setColorTheme(themeId) {
+  state.userSettings = state.userSettings || { colorTheme: "orange", darkMode: false };
+  state.userSettings.colorTheme = themeId;
+  applyUserTheme();
+  saveState();
+  renderThemeSwatches();
+}
+
+function setDarkMode(enabled) {
+  state.userSettings = state.userSettings || { colorTheme: "orange", darkMode: false };
+  state.userSettings.darkMode = enabled;
+  applyUserTheme();
+  saveState();
+  if (ui.darkModeToggle) ui.darkModeToggle.checked = enabled;
+}
+
+function saveUserProfile() {
+  state.userProfile = {
+    displayName: ui.profileDisplayName?.value.trim() || "",
+    heightCm: ui.profileHeight?.value.trim() || "",
+    bodyWeightKg: ui.profileBodyWeight?.value.trim() || "",
+    age: ui.profileAge?.value.trim() || ""
+  };
+  saveState();
+  renderProfilePage();
+}
+
+function renderThemeSwatches() {
+  if (!ui.themeSwatches) return;
+  const current = state.userSettings?.colorTheme || "orange";
+  ui.themeSwatches.innerHTML = "";
+  THEME_OPTIONS.forEach((theme) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `theme-swatch${current === theme.id ? " active" : ""}`;
+    btn.innerHTML = `${theme.label}<div class="theme-swatch-dots">${theme.swatches.map((c) => `<span style="background:${c}"></span>`).join("")}</div>`;
+    btn.addEventListener("click", () => setColorTheme(theme.id));
+    ui.themeSwatches.appendChild(btn);
+  });
+}
+
+function renderProfilePage() {
+  const profile = state.userProfile || {};
+  if (ui.profileDisplayName && document.activeElement !== ui.profileDisplayName) ui.profileDisplayName.value = profile.displayName || "";
+  if (ui.profileHeight && document.activeElement !== ui.profileHeight) ui.profileHeight.value = profile.heightCm || "";
+  if (ui.profileBodyWeight && document.activeElement !== ui.profileBodyWeight) ui.profileBodyWeight.value = profile.bodyWeightKg || "";
+  if (ui.profileAge && document.activeElement !== ui.profileAge) ui.profileAge.value = profile.age || "";
+  if (ui.darkModeToggle) ui.darkModeToggle.checked = Boolean(state.userSettings?.darkMode);
+
+  const parts = [];
+  if (profile.displayName) parts.push(profile.displayName);
+  if (profile.heightCm) parts.push(`${profile.heightCm} cm`);
+  if (profile.bodyWeightKg) parts.push(`${profile.bodyWeightKg} kg`);
+  if (profile.age) parts.push(`age ${profile.age}`);
+  if (ui.profileSummaryLine) {
+    ui.profileSummaryLine.textContent = parts.length ? parts.join(" · ") : "Add your stats below";
+  }
+  renderThemeSwatches();
+}
+
+function updateProfileAuthLine(session) {
+  if (!ui.profileEmailLine) return;
+  if (session?.user?.email) {
+    ui.profileEmailLine.textContent = `Signed in as ${session.user.email}`;
+    const name = state.userProfile?.displayName;
+    if (name && ui.profileSummaryLine) {
+      const parts = [name];
+      if (state.userProfile.heightCm) parts.push(`${state.userProfile.heightCm} cm`);
+      if (state.userProfile.bodyWeightKg) parts.push(`${state.userProfile.bodyWeightKg} kg`);
+      if (state.userProfile.age) parts.push(`age ${state.userProfile.age}`);
+      ui.profileSummaryLine.textContent = parts.join(" · ");
+    }
+  } else {
+    ui.profileEmailLine.textContent = "Not signed in — use Account & sync below";
+  }
 }
 
 function localDataSummary() {
@@ -586,12 +705,14 @@ function updateSyncUI(session) {
     ui.syncLoggedOut.classList.remove("hidden");
     ui.syncLoggedIn.classList.add("hidden");
     setSyncStatus("Log in to sync across devices.");
+    updateProfileAuthLine(null);
     return;
   }
   ui.syncLoggedOut.classList.add("hidden");
   ui.syncLoggedIn.classList.remove("hidden");
   ui.syncUserEmail.textContent = `Logged in as ${session.user.email}`;
   setSyncStatus("Connected — changes auto-save to cloud.");
+  updateProfileAuthLine(session);
 }
 
 async function handlePostLoginSync() {
@@ -1711,6 +1832,7 @@ function renderAll() {
   renderUpcoming();
   renderPlanPage();
   renderRecordsPage();
+  renderProfilePage();
   renderSpecificDayOverride();
   renderTodayWorkoutPicker();
   renderCalendarAndStats();
@@ -1761,6 +1883,8 @@ function setup() {
   ui.applyDayWorkoutBtn.addEventListener("click", applySpecificDayWorkout);
   ui.clearDayWorkoutBtn.addEventListener("click", clearSpecificDayWorkout);
   ui.specificDateInput.addEventListener("change", renderSpecificDayOverride);
+  ui.saveProfileBtn?.addEventListener("click", saveUserProfile);
+  ui.darkModeToggle?.addEventListener("change", () => setDarkMode(ui.darkModeToggle.checked));
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;
     renderHomeAndWorkout();
