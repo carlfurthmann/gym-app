@@ -75,11 +75,11 @@ function getLiquidEtherOptions() {
     resolution: mobile ? 0.28 : 0.45,
     iterationsPoisson: mobile ? 10 : 24,
     iterationsViscous: mobile ? 10 : 24,
-    mouseForce: mobile ? 10 : 18,
-    cursorSize: mobile ? 70 : 100,
+    mouseForce: mobile ? 6 : 8,
+    cursorSize: mobile ? 55 : 65,
     autoDemo: true,
-    autoSpeed: 0.45,
-    autoIntensity: 2.0
+    autoSpeed: 0.32,
+    autoIntensity: 1.1
   };
 }
 
@@ -105,7 +105,7 @@ function initLiquidBackground() {
   }
 
   if (typeof window.initPageGradualBlur === "function") {
-    window.initPageGradualBlur({ enabled: true, opacity: 0.65, strength: 1.6, topHeight: "3.5rem", bottomHeight: "3.5rem" });
+    window.initPageGradualBlur({ enabled: true, opacity: 0.82, strength: 2.4, topHeight: "5rem", bottomHeight: "5rem" });
   }
 
   if (typeof createLiquidEther !== "function" || typeof THREE === "undefined") {
@@ -2169,7 +2169,7 @@ function setup() {
   ui.liquidBackgroundToggle?.addEventListener("change", () => setLiquidBackground(ui.liquidBackgroundToggle.checked));
   initLiquidBackground();
   if (!state.userSettings?.liquidBackground && typeof window.initPageGradualBlur === "function") {
-    window.initPageGradualBlur({ enabled: true, opacity: 0.5, strength: 1.2, topHeight: "3rem", bottomHeight: "3rem" });
+    window.initPageGradualBlur({ enabled: true, opacity: 0.7, strength: 1.8, topHeight: "4.5rem", bottomHeight: "4.5rem" });
   }
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;

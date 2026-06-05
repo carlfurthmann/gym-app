@@ -235,9 +235,9 @@
 
     const shared = {
       target: "page",
-      opacity: opts.opacity ?? 0.65,
+      opacity: opts.opacity ?? 0.82,
       zIndex: opts.zIndex ?? 4,
-      divCount: 5,
+      divCount: 6,
       curve: "bezier",
       exponential: false
     };
@@ -247,15 +247,15 @@
         ...shared,
         preset: "page-header",
         position: "top",
-        height: opts.topHeight || "3.5rem",
-        strength: opts.strength ?? 1.6
+        height: opts.topHeight || "5rem",
+        strength: opts.strength ?? 2.4
       }),
       bottom: createGradualBlur(parentEl, {
         ...shared,
         preset: "page-footer",
         position: "bottom",
-        height: opts.bottomHeight || "3.5rem",
-        strength: opts.strength ?? 1.6
+        height: opts.bottomHeight || "5rem",
+        strength: opts.strength ?? 2.4
       }),
       dispose() {
         this.top?.dispose();

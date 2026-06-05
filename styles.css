@@ -70,7 +70,7 @@ body.liquid-bg-fallback::before {
   height: 100%;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.88;
+  opacity: 0.58;
 }
 
 .liquid-ether-bg.hidden {
@@ -108,7 +108,8 @@ body.liquid-bg-fallback::before {
 .gradual-blur[data-position="top"] .gradual-blur-tint {
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--card) 28%, transparent) 0%,
+    color-mix(in srgb, var(--card) 42%, transparent) 0%,
+    color-mix(in srgb, var(--card) 12%, transparent) 55%,
     transparent 100%
   );
 }
@@ -116,7 +117,8 @@ body.liquid-bg-fallback::before {
 .gradual-blur[data-position="bottom"] .gradual-blur-tint {
   background: linear-gradient(
     to top,
-    color-mix(in srgb, var(--card) 28%, transparent) 0%,
+    color-mix(in srgb, var(--card) 42%, transparent) 0%,
+    color-mix(in srgb, var(--card) 12%, transparent) 55%,
     transparent 100%
   );
 }
