@@ -74,6 +74,24 @@
             </div>
           </div>
 
+          <div class="home-weekly-summary">
+            <h2 class="home-section-title">Weekly progress</h2>
+            <div class="stats-grid stats-grid-weekly">
+              <div class="stat-tile">
+                <span class="stat-label">Streak</span>
+                <p id="weeklyStreakCounter" class="stat-value"></p>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-label">This week</span>
+                <p id="weeklyVolumeCounter" class="stat-value"></p>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-label">vs last week</span>
+                <p id="weeklyVolumeCompare" class="stat-value"></p>
+              </div>
+            </div>
+          </div>
+
           <div class="home-panels">
             <div class="content-section">
               <h2 id="homeTodayTitle">Today</h2>
@@ -125,6 +143,7 @@
                 <p id="routineSubtitle"></p>
               </div>
               <div class="workout-toolbar top-actions">
+                <button id="useLastSessionBtn" class="btn ghost hidden" type="button">Use last session weights</button>
                 <button id="showPrsOnlyBtn" class="btn ghost" type="button">Show PRs only</button>
                 <button id="expandAllExercisesBtn" class="btn ghost" type="button">Expand all</button>
                 <button id="collapseAllExercisesBtn" class="btn ghost" type="button">Collapse all</button>
@@ -229,7 +248,16 @@
         <section id="recordsPage" class="page hidden">
           <div class="page-header">
             <h1>Records</h1>
-            <p class="muted">Volume PRs update on complete workout. Log 1RM separately with Save 1RM.</p>
+            <p class="muted">Tap an exercise to see its history. Volume PRs update on complete workout.</p>
+          </div>
+          <div id="exerciseHistoryPanel" class="exercise-history-panel content-section hidden">
+            <div class="exercise-history-head">
+              <h3 id="exerciseHistoryTitle">Exercise history</h3>
+              <button id="closeExerciseHistoryBtn" class="btn ghost" type="button">Close</button>
+            </div>
+            <p id="exerciseHistorySubtitle" class="muted"></p>
+            <div id="exerciseHistoryChart" class="exercise-history-chart" role="img" aria-label="Exercise progress chart"></div>
+            <div id="exerciseHistoryPoints" class="exercise-history-points"></div>
           </div>
           <div class="records-layout">
             <div class="content-section">

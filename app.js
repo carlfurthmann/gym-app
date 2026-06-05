@@ -226,6 +226,16 @@ const ui = {
   syncUserEmail: document.getElementById("syncUserEmail"),
   offlineIndicator: document.getElementById("offlineIndicator"),
   dailyCardioCounter: document.getElementById("dailyCardioCounter"),
+  weeklyStreakCounter: document.getElementById("weeklyStreakCounter"),
+  weeklyVolumeCounter: document.getElementById("weeklyVolumeCounter"),
+  weeklyVolumeCompare: document.getElementById("weeklyVolumeCompare"),
+  useLastSessionBtn: document.getElementById("useLastSessionBtn"),
+  exerciseHistoryPanel: document.getElementById("exerciseHistoryPanel"),
+  exerciseHistoryTitle: document.getElementById("exerciseHistoryTitle"),
+  exerciseHistorySubtitle: document.getElementById("exerciseHistorySubtitle"),
+  exerciseHistoryChart: document.getElementById("exerciseHistoryChart"),
+  exerciseHistoryPoints: document.getElementById("exerciseHistoryPoints"),
+  closeExerciseHistoryBtn: document.getElementById("closeExerciseHistoryBtn"),
   workoutHistoryBlock: document.getElementById("workoutHistoryBlock"),
   workoutHistoryTitle: document.getElementById("workoutHistoryTitle"),
   workoutHistoryList: document.getElementById("workoutHistoryList"),
@@ -262,6 +272,7 @@ const ui = {
 let upcomingPreviewVisible = false;
 let showPrsOnly = false;
 let planExercisesExpanded = false;
+let selectedExerciseHistoryName = null;
 let exercisesExpanded = false;
 let restTimerInterval = null;
 let restTimerEndsAt = 0;
@@ -733,10 +744,11 @@ function formatSessionDate(dateKey) {
 function copyLastSessionWeightsToWorkout(workoutId, session) {
   const workout = getWorkoutById(workoutId);
   if (!workout || !session) return false;
-  session.exercises.forEach((past, idx) => {
-    if (!workout.exercises[idx]) return;
+  let copied = 0;
+  session.exercises.forEach((past) => {
+    const idx = workout.exercises.findIndex((cur) => cur.name === past.name);
+    if (idx < 0) return;
     const cur = workout.exercises[idx];
-    if (past.name && past.name !== cur.name) return;
     cur.weight = past.weight;
     cur.reps = past.reps;
     cur.sets = past.sets;
@@ -746,9 +758,187 @@ function copyLastSessionWeightsToWorkout(workoutId, session) {
     cur.warmupSets = past.warmupSets || "";
     cur.note = past.note || "";
     normalizeExercise(cur);
+    copied += 1;
   });
+  if (!copied) return false;
   saveState();
   return true;
+}
+
+function getWeekDates(weekStartDate) {
+  const start = startOfWeek(weekStartDate);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
+
+function weekHasCompletedWorkout(weekStartDate) {
+  return getWeekDates(weekStartDate).some((date) => {
+    const key = formatDateKey(date);
+    if (state.completedByDate[key]) return true;
+    const routine = getRoutineForDateWithHistory(date);
+    if (!routine.exercises.length) return false;
+    return (state.doneByDate[key] || []).length > 0;
+  });
+}
+
+function computeWeeklyStreak() {
+  let streak = 0;
+  const cursor = startOfWeek(new Date());
+  if (!weekHasCompletedWorkout(cursor)) cursor.setDate(cursor.getDate() - 7);
+  while (weekHasCompletedWorkout(cursor)) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 7);
+  }
+  return streak;
+}
+
+function computeWeekVolumeKg(weekStartDate) {
+  let total = 0;
+  getWeekDates(weekStartDate).forEach((date) => {
+    const routine = getRoutineForDateWithHistory(date);
+    total += computeTotalKgForDate(date, routine);
+  });
+  return Math.round(total);
+}
+
+function formatWeeklyVolumeCompare(thisWeek, lastWeek) {
+  if (lastWeek <= 0) {
+    return thisWeek > 0 ? `+${thisWeek} kg (no data last week)` : "No lift data last week";
+  }
+  const delta = thisWeek - lastWeek;
+  const pct = Math.round((delta / lastWeek) * 100);
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct}% (${lastWeek.toLocaleString()} kg)`;
+}
+
+function renderWeeklySummary() {
+  const thisWeekStart = startOfWeek(new Date());
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const streak = computeWeeklyStreak();
+  const thisWeekKg = computeWeekVolumeKg(thisWeekStart);
+  const lastWeekKg = computeWeekVolumeKg(lastWeekStart);
+  if (ui.weeklyStreakCounter) {
+    ui.weeklyStreakCounter.textContent = streak
+      ? `${streak} week${streak === 1 ? "" : "s"} in a row`
+      : "Start your streak this week";
+  }
+  if (ui.weeklyVolumeCounter) ui.weeklyVolumeCounter.textContent = `${thisWeekKg.toLocaleString()} kg`;
+  if (ui.weeklyVolumeCompare) ui.weeklyVolumeCompare.textContent = formatWeeklyVolumeCompare(thisWeekKg, lastWeekKg);
+}
+
+function getExerciseHistoryPoints(exerciseName) {
+  const points = [];
+  (state.workoutSessions || []).forEach((session) => {
+    session.exercises.forEach((ex) => {
+      if (ex.name !== exerciseName || isCardioExercise(ex)) return;
+      const volume = exerciseVolume(ex);
+      const weight = parseFirstNumber(ex.weight);
+      if (volume <= 0 && weight <= 0) return;
+      points.push({
+        dateKey: session.dateKey,
+        volume,
+        weight,
+        info: formatExerciseInfo(ex)
+      });
+    });
+  });
+  const byDate = new Map();
+  points.forEach((p) => {
+    const existing = byDate.get(p.dateKey);
+    if (!existing || p.volume > existing.volume) byDate.set(p.dateKey, p);
+  });
+  return [...byDate.values()].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+}
+
+function renderExerciseHistoryChart(container, points) {
+  if (!container) return;
+  if (points.length < 2) {
+    container.innerHTML = '<p class="muted">Log this exercise in at least 2 completed workouts to see a trend line.</p>';
+    return;
+  }
+  const width = 360;
+  const height = 160;
+  const padX = 28;
+  const padY = 22;
+  const values = points.map((p) => p.volume);
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = Math.max(max - min, 1);
+  const plotW = width - padX * 2;
+  const plotH = height - padY * 2;
+  const coords = points.map((p, i) => {
+    const x = padX + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
+    const y = padY + plotH - ((p.volume - min) / range) * plotH;
+    return { x, y, p };
+  });
+  const polyline = coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
+  const dots = coords.map((c) => (
+    `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4" fill="var(--primary)" />`
+  )).join("");
+  container.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" stroke="var(--border)" stroke-width="1" />
+      <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" stroke="var(--border)" stroke-width="1" />
+      <polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      ${dots}
+      <text x="${padX}" y="${padY - 4}" fill="var(--muted)" font-size="10">${max} kg</text>
+      <text x="${padX}" y="${height - padY + 14}" fill="var(--muted)" font-size="10">${min} kg</text>
+    </svg>
+  `;
+}
+
+function showExerciseHistory(exerciseName) {
+  if (!exerciseName || !ui.exerciseHistoryPanel) return;
+  selectedExerciseHistoryName = exerciseName;
+  const points = getExerciseHistoryPoints(exerciseName);
+  ui.exerciseHistoryPanel.classList.remove("hidden");
+  if (ui.exerciseHistoryTitle) ui.exerciseHistoryTitle.textContent = exerciseName;
+  if (ui.exerciseHistorySubtitle) {
+    ui.exerciseHistorySubtitle.textContent = points.length
+      ? `${points.length} logged session${points.length === 1 ? "" : "s"} — volume (kg) over time`
+      : "No completed session data for this exercise yet.";
+  }
+  renderExerciseHistoryChart(ui.exerciseHistoryChart, points);
+  if (ui.exerciseHistoryPoints) {
+    ui.exerciseHistoryPoints.innerHTML = "";
+    [...points].reverse().slice(0, 8).forEach((p) => {
+      const line = document.createElement("p");
+      line.className = "exercise-history-point";
+      line.textContent = `${formatSessionDate(p.dateKey)} — ${p.info} (${p.volume.toLocaleString()} kg volume)`;
+      ui.exerciseHistoryPoints.appendChild(line);
+    });
+  }
+  document.querySelectorAll(".record-row-clickable").forEach((row) => {
+    row.classList.toggle("is-selected", row.dataset.exerciseName === exerciseName);
+  });
+  ui.exerciseHistoryPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function hideExerciseHistory() {
+  selectedExerciseHistoryName = null;
+  if (ui.exerciseHistoryPanel) ui.exerciseHistoryPanel.classList.add("hidden");
+  document.querySelectorAll(".record-row-clickable.is-selected").forEach((row) => row.classList.remove("is-selected"));
+}
+
+function bindExerciseHistoryRow(row, exerciseName, { skip = false } = {}) {
+  if (!exerciseName || skip) return;
+  row.classList.add("record-row-clickable");
+  row.dataset.exerciseName = exerciseName;
+  row.tabIndex = 0;
+  row.setAttribute("role", "button");
+  row.setAttribute("aria-label", `View history for ${exerciseName}`);
+  const open = () => showExerciseHistory(exerciseName);
+  row.addEventListener("click", open);
+  row.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      open();
+    }
+  });
 }
 
 function stopRestTimer() {
@@ -1236,13 +1426,32 @@ function computeMonthlyCardioMinutes(year, month) {
   return total;
 }
 
-function renderWorkoutHistory(todayRoutine) {
-  if (!ui.workoutHistoryBlock) return;
-  const last = todayRoutine.workoutId ? findLastSessionForWorkout(todayRoutine.workoutId) : null;
+function getPreviousSessionForRoutine(todayRoutine) {
   const today = dateKey();
-  const previous = last && last.dateKey !== today ? last : (state.workoutSessions || []).find(
+  const last = todayRoutine.workoutId ? findLastSessionForWorkout(todayRoutine.workoutId) : null;
+  if (last && last.dateKey !== today) return last;
+  return (state.workoutSessions || []).find(
     (s) => s.workoutId === todayRoutine.workoutId && s.dateKey !== today
-  );
+  ) || null;
+}
+
+function renderWorkoutHistory(todayRoutine) {
+  const previous = getPreviousSessionForRoutine(todayRoutine);
+  const canCopy = Boolean(previous && todayRoutine.workoutId && todayRoutine.exercises.length);
+
+  if (ui.useLastSessionBtn) {
+    if (canCopy) {
+      ui.useLastSessionBtn.classList.remove("hidden");
+      ui.useLastSessionBtn.textContent = `Use last ${previous.workoutName} weights (${formatSessionDate(previous.dateKey)})`;
+      ui.useLastSessionBtn.onclick = () => {
+        if (copyLastSessionWeightsToWorkout(todayRoutine.workoutId, previous)) renderAll();
+      };
+    } else {
+      ui.useLastSessionBtn.classList.add("hidden");
+    }
+  }
+
+  if (!ui.workoutHistoryBlock) return;
   if (!previous || !todayRoutine.exercises.length) {
     ui.workoutHistoryBlock.classList.add("hidden");
     return;
@@ -1346,6 +1555,7 @@ function renderRecordsPage() {
           <div class="record-row-head"><span>${name}</span><span class="one-rm-badge">1RM</span></div>
           <p class="muted">${best.oneRm} kg — ${formatSessionDate(best.oneRmDateKey || "")}</p>
         `;
+        bindExerciseHistoryRow(row, name);
         ui.recordsOneRmList.appendChild(row);
       });
     }
@@ -1378,6 +1588,7 @@ function renderRecordsPage() {
           <p class="muted">${formatBestLine(best)}</p>
           ${isPr && best ? `<p class="muted">Beat your best by ${Math.round(exerciseVolume(exercise) - best.volume)} kg volume</p>` : ""}
         `;
+        bindExerciseHistoryRow(row, exercise.name, { skip: isCardioExercise(exercise) });
         ui.recordsTodayList.appendChild(row);
       });
     }
@@ -1404,10 +1615,13 @@ function renderRecordsPage() {
           <div class="record-row-head"><span>${name}</span></div>
           <p class="muted">${best.weight} kg × ${best.reps} × ${best.sets || "1"} — ${formatSessionDate(best.dateKey)}</p>
         `;
+        bindExerciseHistoryRow(row, name);
         ui.recordsAllList.appendChild(row);
       });
     }
   }
+
+  if (selectedExerciseHistoryName) showExerciseHistory(selectedExerciseHistoryName);
 }
 
 function renderHomeAndWorkout() {
@@ -1430,6 +1644,7 @@ function renderHomeAndWorkout() {
 
   ui.routineTitle.textContent = `${todayName} Routine`;
   ui.routineSubtitle.textContent = todayRoutine.focus;
+  renderWeeklySummary();
   renderWorkoutHistory(todayRoutine);
   ui.exerciseList.innerHTML = "";
   if (!todayRoutine.exercises.length) {
@@ -2245,6 +2460,7 @@ function setup() {
   ui.togglePlanExercisesBtn?.addEventListener("click", () => {
     setPlanExercisesExpanded(!planExercisesExpanded);
   });
+  ui.closeExerciseHistoryBtn?.addEventListener("click", hideExerciseHistory);
   ui.applyDayWorkoutBtn.addEventListener("click", applySpecificDayWorkout);
   ui.clearDayWorkoutBtn.addEventListener("click", clearSpecificDayWorkout);
   ui.specificDateInput.addEventListener("change", renderSpecificDayOverride);
