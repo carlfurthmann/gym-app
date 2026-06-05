@@ -6,8 +6,8 @@
   --gym-bg: #FFF7ED;
   --gym-surface: #FFFFFF;
   --gym-text: #1C0A00;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 /* === Dark mode ===================================================== */
@@ -30,8 +30,8 @@
   --gym-bg: #EFF6FF;
   --gym-surface: #FFFFFF;
   --gym-text: #0B1629;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 :root[data-theme="blue"].dark {
@@ -52,8 +52,8 @@
   --gym-bg: #FFF5F5;
   --gym-surface: #FFFFFF;
   --gym-text: #1C0000;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 :root[data-theme="red"].dark {
@@ -74,8 +74,8 @@
   --gym-bg: #F5F3FF;
   --gym-surface: #FFFFFF;
   --gym-text: #1E0A3C;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 :root[data-theme="purple"].dark {
@@ -96,8 +96,8 @@
   --gym-bg: #F0FDF4;
   --gym-surface: #FFFFFF;
   --gym-text: #052E16;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 :root[data-theme="green"].dark {
@@ -118,8 +118,8 @@
   --gym-bg: #FEFCE8;
   --gym-surface: #FFFFFF;
   --gym-text: #1A1200;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 :root[data-theme="mustard"].dark {
@@ -140,8 +140,8 @@
   --gym-bg: #FDF2F8;
   --gym-surface: #FFFFFF;
   --gym-text: #1A0510;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 :root[data-theme="pink"].dark {

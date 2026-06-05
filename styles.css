@@ -155,6 +155,14 @@ body.liquid-bg-fallback::before {
   -webkit-backdrop-filter: blur(14px);
 }
 
+:root:not(.dark) .card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
 .navbar {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -502,6 +510,14 @@ input {
   touch-action: manipulation;
 }
 
+:root:not(.dark) select,
+:root:not(.dark) input:not([type="checkbox"]) {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
 .editor-grid input {
   min-height: 44px;
 }
@@ -779,6 +795,34 @@ input {
 
 .profile-hero {
   background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--card)), var(--card));
+}
+
+:root:not(.dark) .profile-hero {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 14%, var(--glass-bg)), var(--glass-bg));
+}
+
+:root:not(.dark) .calendar-cell {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+:root:not(.dark) .calendar-cell.done {
+  background: color-mix(in srgb, var(--primary) 22%, var(--glass-bg));
+}
+
+:root:not(.dark) .calendar-cell.missed {
+  background: color-mix(in srgb, var(--danger) 18%, var(--glass-bg));
+}
+
+:root:not(.dark) .calendar-cell.rest {
+  background: color-mix(in srgb, var(--gym-text) 5%, var(--glass-bg));
+}
+
+:root:not(.dark) .confirm-dialog {
+  background: color-mix(in srgb, var(--glass-bg) 85%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .toggle-row {
