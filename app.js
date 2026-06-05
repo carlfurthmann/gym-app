@@ -386,7 +386,7 @@ function setColorTheme(themeId) {
 }
 
 function setDarkMode(enabled) {
-  state.userSettings = state.userSettings || { colorTheme: "orange", darkMode: false };
+  state.userSettings = state.userSettings || { colorTheme: "purple", darkMode: false };
   state.userSettings.darkMode = enabled;
   applyUserTheme();
   saveState();
@@ -406,7 +406,7 @@ function saveUserProfile() {
 
 function renderThemeSwatches() {
   if (!ui.themeSwatches) return;
-  const current = state.userSettings?.colorTheme || "orange";
+  const current = state.userSettings?.colorTheme || "purple";
   ui.themeSwatches.innerHTML = "";
   THEME_OPTIONS.forEach((theme) => {
     const btn = document.createElement("button");
