@@ -1226,6 +1226,17 @@ input {
   margin-bottom: 0;
 }
 
+.editor-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.plan-editor-actions .btn {
+  margin-top: 0;
+}
+
 .editor-section-label {
   font-size: 0.8rem;
   color: var(--muted);

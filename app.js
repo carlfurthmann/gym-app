@@ -240,6 +240,7 @@ const ui = {
   workoutHistoryTitle: document.getElementById("workoutHistoryTitle"),
   workoutHistoryList: document.getElementById("workoutHistoryList"),
   copyHistoryWeightsBtn: document.getElementById("copyHistoryWeightsBtn"),
+  duplicateWorkoutBtn: document.getElementById("duplicateWorkoutBtn"),
   deleteWorkoutBtn: document.getElementById("deleteWorkoutBtn"),
   exerciseKindInput: document.getElementById("exerciseKindInput"),
   exerciseNoteInput: document.getElementById("exerciseNoteInput"),
@@ -984,6 +985,59 @@ function deleteExerciseFromWorkout(workoutId, index) {
   workout.exercises.splice(index, 1);
   saveState();
   renderAll();
+}
+
+function suggestDuplicateName(baseName, suffix = "copy") {
+  const trimmed = (baseName || "").trim() || "Workout";
+  const tag = `(${suffix})`;
+  if (trimmed.toLowerCase().endsWith(tag)) return `${trimmed} 2`;
+  return `${trimmed} ${tag}`;
+}
+
+function duplicateExerciseInWorkout(workoutId, index) {
+  const workout = getWorkoutById(workoutId);
+  if (!workout || !workout.exercises[index]) return false;
+  const source = workout.exercises[index];
+  const copy = deepCopy(source);
+  normalizeExercise(copy);
+  const defaultName = suggestDuplicateName(copy.name, "copy");
+  const name = prompt("Name for the duplicated exercise:", defaultName);
+  if (name === null) return false;
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  copy.name = trimmed;
+  workout.exercises.splice(index + 1, 0, copy);
+  planExercisesExpanded = true;
+  saveState();
+  renderAll();
+  return true;
+}
+
+function duplicateWorkoutById(workoutId) {
+  const source = getWorkoutById(workoutId);
+  if (!source || workoutId === CREATE_WORKOUT_VALUE) return null;
+  const defaultName = suggestDuplicateName(source.name, "heavy");
+  const name = prompt("Name for the duplicated workout:", defaultName);
+  if (name === null) return null;
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  if (state.workoutLibrary.some((w) => w.name.toLowerCase() === trimmed.toLowerCase())) {
+    alert(`A workout named "${trimmed}" already exists. Pick another name.`);
+    return null;
+  }
+  const workout = {
+    id: newWorkoutId(),
+    name: trimmed,
+    exercises: deepCopy(source.exercises).map((ex) => {
+      const copy = deepCopy(ex);
+      normalizeExercise(copy);
+      return copy;
+    })
+  };
+  state.workoutLibrary.push(workout);
+  if (!state.rotationWorkoutIds.includes(workout.id)) state.rotationWorkoutIds.push(workout.id);
+  saveState();
+  return workout;
 }
 
 function deleteWorkoutById(workoutId) {
@@ -2040,6 +2094,13 @@ function buildEditorItem(workoutId, exercise, index) {
   const nameEl = document.createElement("p");
   nameEl.className = "exercise-name";
   nameEl.textContent = exercise.name;
+  const actions = document.createElement("div");
+  actions.className = "editor-item-actions";
+  const duplicateBtn = document.createElement("button");
+  duplicateBtn.type = "button";
+  duplicateBtn.className = "btn ghost";
+  duplicateBtn.textContent = "Duplicate";
+  duplicateBtn.addEventListener("click", () => duplicateExerciseInWorkout(workoutId, index));
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "btn ghost danger-text";
@@ -2047,8 +2108,10 @@ function buildEditorItem(workoutId, exercise, index) {
   removeBtn.addEventListener("click", () => {
     if (confirm(`Remove "${exercise.name}" from this workout?`)) deleteExerciseFromWorkout(workoutId, index);
   });
+  actions.appendChild(duplicateBtn);
+  actions.appendChild(removeBtn);
   head.appendChild(nameEl);
-  head.appendChild(removeBtn);
+  head.appendChild(actions);
   node.appendChild(head);
 
   const kindLabel = document.createElement("label");
@@ -2427,6 +2490,16 @@ function setup() {
   ui.syncLogoutBtn.addEventListener("click", syncLogout);
   ui.syncPullBtn.addEventListener("click", syncPull);
   ui.syncPushBtn.addEventListener("click", pushToCloud);
+  ui.duplicateWorkoutBtn?.addEventListener("click", () => {
+    const id = ui.editWorkoutSelect?.value;
+    if (!id || id === CREATE_WORKOUT_VALUE) return;
+    const workout = duplicateWorkoutById(id);
+    if (!workout) return;
+    ui.editWorkoutSelect.value = workout.id;
+    syncAddWorkoutFromEditor();
+    planExercisesExpanded = true;
+    renderAll();
+  });
   ui.deleteWorkoutBtn?.addEventListener("click", () => {
     if (ui.editWorkoutSelect.value) deleteWorkoutById(ui.editWorkoutSelect.value);
   });
