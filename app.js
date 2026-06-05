@@ -12,7 +12,8 @@ const THEME_OPTIONS = [
   { id: "red", label: "Red", swatches: ["#DC2626", "#B91C1C", "#FFF5F5"] },
   { id: "purple", label: "Purple", swatches: ["#7C3AED", "#6D28D9", "#F5F3FF"] },
   { id: "green", label: "Green", swatches: ["#16A34A", "#059669", "#F0FDF4"] },
-  { id: "mustard", label: "Mustard", swatches: ["#CA8A04", "#A16207", "#FEFCE8"] }
+  { id: "mustard", label: "Mustard", swatches: ["#CA8A04", "#A16207", "#FEFCE8"] },
+  { id: "pink", label: "Pink", swatches: ["#DB2777", "#BE185D", "#FDF2F8"] }
 ];
 
 const WANDAS_PREFAB_WORKOUTS = [
@@ -41,10 +42,109 @@ const DEFAULT_PLAN = {
   Sunday: { focus: "Legs (Cardio)", exercises: [{ name: "Leg press", weight: "240", reps: "4", sets: "1" }, { name: "Front raise", weight: "85", reps: "6", sets: "1" }, { name: "Squat", weight: "", reps: "", sets: "1" }, { name: "Hamstring curl", weight: "", reps: "", sets: "1" }, { name: "Calf raise", weight: "", reps: "", sets: "1" }, { name: "Deadlift unassisted", weight: "120", reps: "3", sets: "1" }] }
 };
 
+function isMobileDevice() {
+  return window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
 let state = loadState();
 applyUserTheme();
 let supabaseClient = null;
 let cloudPushTimer = null;
+let liquidEtherInstance = null;
+let liquidEtherFailed = false;
+
+const LIQUID_THEME_COLORS = {
+  orange: ["#F97316", "#FB923C", "#FDBA74"],
+  blue: ["#3B82F6", "#60A5FA", "#93C5FD"],
+  red: ["#EF4444", "#F87171", "#FCA5A5"],
+  purple: ["#A78BFA", "#8B5CF6", "#C4B5FD"],
+  green: ["#22C55E", "#4ADE80", "#86EFAC"],
+  mustard: ["#EAB308", "#FACC15", "#FDE047"],
+  pink: ["#F472B6", "#EC4899", "#F9A8D4"]
+};
+
+function getThemeLiquidColors() {
+  const theme = state.userSettings?.colorTheme || "purple";
+  return LIQUID_THEME_COLORS[theme] || LIQUID_THEME_COLORS.purple;
+}
+
+function getLiquidEtherOptions() {
+  const mobile = isMobileDevice();
+  return {
+    colors: getThemeLiquidColors(),
+    resolution: mobile ? 0.28 : 0.45,
+    iterationsPoisson: mobile ? 10 : 24,
+    iterationsViscous: mobile ? 10 : 24,
+    mouseForce: mobile ? 10 : 18,
+    cursorSize: mobile ? 70 : 100,
+    autoDemo: true,
+    autoSpeed: 0.45,
+    autoIntensity: 2.0
+  };
+}
+
+function initLiquidBackground() {
+  const mount = document.getElementById("liquidEtherBg");
+  const enabled = Boolean(state.userSettings?.liquidBackground);
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (liquidEtherInstance) {
+    liquidEtherInstance.dispose();
+    liquidEtherInstance = null;
+  }
+  liquidEtherFailed = false;
+
+  document.body.classList.toggle("liquid-bg-active", false);
+  if (!mount) return;
+
+  if (!enabled || reducedMotion || typeof createLiquidEther !== "function") {
+    mount.classList.add("hidden");
+    updateLiquidBackgroundHint(reducedMotion);
+    return;
+  }
+
+  mount.classList.remove("hidden");
+  liquidEtherInstance = createLiquidEther(mount, getLiquidEtherOptions());
+  if (liquidEtherInstance.failed) {
+    liquidEtherInstance.dispose();
+    liquidEtherInstance = null;
+    liquidEtherFailed = true;
+    mount.classList.add("hidden");
+    updateLiquidBackgroundHint(reducedMotion);
+    return;
+  }
+  document.body.classList.add("liquid-bg-active");
+  updateLiquidBackgroundHint(reducedMotion);
+}
+
+function updateLiquidBackgroundHint(reducedMotion) {
+  if (!ui.liquidBackgroundHint) return;
+  if (reducedMotion) {
+    ui.liquidBackgroundHint.textContent = "Animated background is off because reduced motion is enabled in your system settings.";
+    ui.liquidBackgroundHint.classList.remove("hidden");
+    return;
+  }
+  if (liquidEtherFailed && state.userSettings?.liquidBackground) {
+    ui.liquidBackgroundHint.textContent = "Animated background could not start (WebGL unavailable in this browser).";
+    ui.liquidBackgroundHint.classList.remove("hidden");
+    return;
+  }
+  if (isMobileDevice()) {
+    ui.liquidBackgroundHint.textContent = "Uses WebGL — off by default on phones for performance. Turn on above to try it.";
+    ui.liquidBackgroundHint.classList.remove("hidden");
+    return;
+  }
+  ui.liquidBackgroundHint.textContent = "Subtle fluid animation behind the app. Uses WebGL.";
+  ui.liquidBackgroundHint.classList.add("hidden");
+}
+
+function setLiquidBackground(enabled) {
+  state.userSettings = state.userSettings || { colorTheme: "purple", darkMode: true };
+  state.userSettings.liquidBackground = enabled;
+  saveState();
+  initLiquidBackground();
+  if (ui.liquidBackgroundToggle) ui.liquidBackgroundToggle.checked = enabled;
+}
 
 const ui = {
   todayLabel: document.getElementById("todayLabel"),
@@ -136,6 +236,8 @@ const ui = {
   profileAge: document.getElementById("profileAge"),
   saveProfileBtn: document.getElementById("saveProfileBtn"),
   darkModeToggle: document.getElementById("darkModeToggle"),
+  liquidBackgroundToggle: document.getElementById("liquidBackgroundToggle"),
+  liquidBackgroundHint: document.getElementById("liquidBackgroundHint"),
   themeSwatches: document.getElementById("themeSwatches")
 };
 let upcomingPreviewVisible = false;
@@ -307,6 +409,9 @@ function migrateState(parsed) {
     s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isExcludedFromDefaultRotation(w)).map((w) => w.id);
   }
   s.weeklyDayConfig = s.weeklyDayConfig || {};
+  if (s.weeklyDayConfig[DEFAULT_REST_DAY]?.mode === SCHEDULE_REST) {
+    delete s.weeklyDayConfig[DEFAULT_REST_DAY];
+  }
   s.workoutSessions = Array.isArray(s.workoutSessions) ? s.workoutSessions : [];
   s.personalBests = s.personalBests || {};
   s.userProfile = {
@@ -315,9 +420,11 @@ function migrateState(parsed) {
     bodyWeightKg: s.userProfile?.bodyWeightKg || "",
     age: s.userProfile?.age || ""
   };
+  const defaultLiquidBg = !isMobileDevice();
   s.userSettings = {
     colorTheme: THEME_OPTIONS.some((t) => t.id === s.userSettings?.colorTheme) ? s.userSettings.colorTheme : "purple",
-    darkMode: s.userSettings?.darkMode !== undefined ? Boolean(s.userSettings.darkMode) : true
+    darkMode: s.userSettings?.darkMode !== undefined ? Boolean(s.userSettings.darkMode) : true,
+    liquidBackground: s.userSettings?.liquidBackground !== undefined ? Boolean(s.userSettings.liquidBackground) : defaultLiquidBg
   };
   s.workoutLibrary.forEach((w) => w.exercises.forEach(normalizeExercise));
   Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
@@ -389,6 +496,7 @@ function setColorTheme(themeId) {
   applyUserTheme();
   saveState();
   renderThemeSwatches();
+  if (liquidEtherInstance) liquidEtherInstance.setColors(getThemeLiquidColors());
 }
 
 function setDarkMode(enabled) {
@@ -431,6 +539,8 @@ function renderProfilePage() {
   if (ui.profileBodyWeight && document.activeElement !== ui.profileBodyWeight) ui.profileBodyWeight.value = profile.bodyWeightKg || "";
   if (ui.profileAge && document.activeElement !== ui.profileAge) ui.profileAge.value = profile.age || "";
   if (ui.darkModeToggle) ui.darkModeToggle.checked = Boolean(state.userSettings?.darkMode);
+  if (ui.liquidBackgroundToggle) ui.liquidBackgroundToggle.checked = Boolean(state.userSettings?.liquidBackground);
+  updateLiquidBackgroundHint(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   const parts = [];
   if (profile.displayName) parts.push(profile.displayName);
@@ -909,6 +1019,18 @@ async function syncPull() {
 }
 function getRestDayForWeek(date) { return state.weekRestDayOverrides[weekKey(date)] || DEFAULT_REST_DAY; }
 
+function getWeekRestDayOverride(date) {
+  return state.weekRestDayOverrides[weekKey(date)] || null;
+}
+
+function isDayRestForWeek(day, date) {
+  if (day === getRestDayForWeek(date)) return true;
+  if (getDayScheduleValue(day) !== SCHEDULE_REST) return false;
+  const weekOverride = getWeekRestDayOverride(date);
+  if (weekOverride && weekOverride !== DEFAULT_REST_DAY && day === DEFAULT_REST_DAY) return false;
+  return true;
+}
+
 function getWorkoutById(id) {
   return state.workoutLibrary.find((w) => w.id === id) || null;
 }
@@ -935,20 +1057,15 @@ function getDayScheduleValue(dayName) {
 }
 
 function buildWeekAssignments(date) {
-  const restDay = getRestDayForWeek(date);
   const pool = getRotationPool();
   let rotateIndex = 0;
   const plan = {};
   WEEK_DAYS.forEach((day) => {
-    if (day === restDay) {
+    if (isDayRestForWeek(day, date)) {
       plan[day] = { focus: "Rest", exercises: [], workoutId: null };
       return;
     }
     const mode = getDayScheduleValue(day);
-    if (mode === SCHEDULE_REST) {
-      plan[day] = { focus: "Rest", exercises: [], workoutId: null };
-      return;
-    }
     if (mode === "workout") {
       const workout = getWorkoutById(state.weeklyDayConfig[day].workoutId);
       plan[day] = routineFromWorkout(workout);
@@ -1466,9 +1583,13 @@ function scheduleSelectValue(dayName) {
 function dayAssignmentLabel(dayName, weekPlan) {
   const routine = weekPlan[dayName];
   const mode = getDayScheduleValue(dayName);
-  const restDay = getRestDayForWeek(new Date());
+  const today = new Date();
+  const restDay = getRestDayForWeek(today);
+  const weekOverride = getWeekRestDayOverride(today);
   if (dayName === restDay && mode === SCHEDULE_ROTATE) {
-    return "Rest (weekly rest day)";
+    return weekOverride && weekOverride !== DEFAULT_REST_DAY
+      ? `Rest (this week — moved from ${DEFAULT_REST_DAY})`
+      : "Rest (weekly rest day)";
   }
   if (!routine || routine.focus === "Rest") return "Rest";
   if (mode === SCHEDULE_ROTATE) return `Auto → ${routine.focus}`;
@@ -1855,8 +1976,15 @@ function unmarkPastDone() {
 }
 function handleRestDayChange() {
   const wk = weekKey(new Date());
-  if (ui.restDaySelect.value === DEFAULT_REST_DAY) delete state.weekRestDayOverrides[wk];
-  else state.weekRestDayOverrides[wk] = ui.restDaySelect.value;
+  const newRest = ui.restDaySelect.value;
+  if (newRest === DEFAULT_REST_DAY) {
+    delete state.weekRestDayOverrides[wk];
+  } else {
+    state.weekRestDayOverrides[wk] = newRest;
+    if (state.weeklyDayConfig[DEFAULT_REST_DAY]?.mode === SCHEDULE_REST) {
+      delete state.weeklyDayConfig[DEFAULT_REST_DAY];
+    }
+  }
   saveState();
   renderAll();
 }
@@ -2024,6 +2152,8 @@ function setup() {
   ui.specificDateInput.addEventListener("change", renderSpecificDayOverride);
   ui.saveProfileBtn?.addEventListener("click", saveUserProfile);
   ui.darkModeToggle?.addEventListener("change", () => setDarkMode(ui.darkModeToggle.checked));
+  ui.liquidBackgroundToggle?.addEventListener("change", () => setLiquidBackground(ui.liquidBackgroundToggle.checked));
+  initLiquidBackground();
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;
     renderHomeAndWorkout();

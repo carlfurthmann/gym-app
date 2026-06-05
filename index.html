@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="liquidEtherBg" class="liquid-ether-bg hidden" aria-hidden="true"></div>
     <main class="app">
       <header class="topbar card">
         <h1>Gym Split Tracker</h1>
@@ -199,6 +200,11 @@
             <span>Dark mode</span>
             <input id="darkModeToggle" type="checkbox" />
           </label>
+          <label class="toggle-row">
+            <span>Animated background</span>
+            <input id="liquidBackgroundToggle" type="checkbox" />
+          </label>
+          <p id="liquidBackgroundHint" class="muted hidden">Uses WebGL — off by default on phones for performance.</p>
           <p class="muted">Colour theme</p>
           <div id="themeSwatches" class="theme-grid"></div>
         </div>
@@ -302,7 +308,9 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.130.1/build/three.min.js"></script>
     <script src="config.js"></script>
+    <script src="liquid-ether.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

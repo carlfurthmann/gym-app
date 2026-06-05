@@ -132,3 +132,25 @@
   --glass-bg: rgba(255, 255, 255, 0.07);
   --glass-border: rgba(255, 255, 255, 0.13);
 }
+
+:root[data-theme="pink"] {
+  --gym-primary: #DB2777;
+  --gym-secondary: #BE185D;
+  --gym-accent: #9D174D;
+  --gym-bg: #FDF2F8;
+  --gym-surface: #FFFFFF;
+  --gym-text: #1A0510;
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="pink"].dark {
+  --gym-primary: #F472B6;
+  --gym-secondary: #EC4899;
+  --gym-accent: #F9A8D4;
+  --gym-bg: #140A10;
+  --gym-surface: #1E0F18;
+  --gym-text: #FDF2F8;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.13);
+}
