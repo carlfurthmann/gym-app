@@ -63,14 +63,11 @@ const LIQUID_THEME_COLORS = {
   pink: ["#F472B6", "#EC4899", "#F9A8D4"]
 };
 
-const LIGHT_LIQUID_COLORS = ["#E3E3EA", "#F4F4F8", "#D2D2DC"];
-
 function isLightMode() {
   return !document.documentElement.classList.contains("dark");
 }
 
 function getThemeLiquidColors() {
-  if (isLightMode()) return LIGHT_LIQUID_COLORS;
   const theme = state.userSettings?.colorTheme || "purple";
   return LIQUID_THEME_COLORS[theme] || LIQUID_THEME_COLORS.purple;
 }
