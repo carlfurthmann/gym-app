@@ -63,23 +63,31 @@ const LIQUID_THEME_COLORS = {
   pink: ["#F472B6", "#EC4899", "#F9A8D4"]
 };
 
+const LIGHT_LIQUID_COLORS = ["#E3E3EA", "#F4F4F8", "#D2D2DC"];
+
+function isLightMode() {
+  return !document.documentElement.classList.contains("dark");
+}
+
 function getThemeLiquidColors() {
+  if (isLightMode()) return LIGHT_LIQUID_COLORS;
   const theme = state.userSettings?.colorTheme || "purple";
   return LIQUID_THEME_COLORS[theme] || LIQUID_THEME_COLORS.purple;
 }
 
 function getLiquidEtherOptions() {
   const mobile = isMobileDevice();
+  const light = isLightMode();
   return {
     colors: getThemeLiquidColors(),
     resolution: mobile ? 0.28 : 0.45,
     iterationsPoisson: mobile ? 10 : 24,
     iterationsViscous: mobile ? 10 : 24,
-    mouseForce: mobile ? 10 : 15,
-    cursorSize: mobile ? 72 : 95,
+    mouseForce: mobile ? 10 : light ? 14 : 15,
+    cursorSize: mobile ? 72 : light ? 88 : 95,
     autoDemo: true,
-    autoSpeed: 0.32,
-    autoIntensity: 1.3
+    autoSpeed: light ? 0.26 : 0.32,
+    autoIntensity: light ? 1.0 : 1.3
   };
 }
 
@@ -511,6 +519,7 @@ function setColorTheme(themeId) {
   saveState();
   renderThemeSwatches();
   if (liquidEtherInstance) liquidEtherInstance.setColors(getThemeLiquidColors());
+  if (state.userSettings?.liquidBackground) initLiquidBackground();
 }
 
 function setDarkMode(enabled) {
@@ -519,6 +528,7 @@ function setDarkMode(enabled) {
   applyUserTheme();
   saveState();
   if (ui.darkModeToggle) ui.darkModeToggle.checked = enabled;
+  if (state.userSettings?.liquidBackground) initLiquidBackground();
 }
 
 function saveUserProfile() {

@@ -30,6 +30,10 @@ body {
   min-height: 100vh;
 }
 
+:root:not(.dark) body {
+  background: #ffffff;
+}
+
 body.liquid-bg-active,
 body.liquid-bg-fallback {
   background: color-mix(in srgb, var(--bg) 72%, #000);
@@ -37,7 +41,7 @@ body.liquid-bg-fallback {
 
 :root:not(.dark) body.liquid-bg-active,
 :root:not(.dark) body.liquid-bg-fallback {
-  background: color-mix(in srgb, var(--bg) 35%, transparent);
+  background: #ffffff;
 }
 
 body.liquid-bg-fallback::before {
@@ -51,6 +55,13 @@ body.liquid-bg-fallback::before {
     radial-gradient(ellipse 70% 50% at 82% 78%, color-mix(in srgb, var(--gym-secondary) 36%, transparent), transparent 72%),
     radial-gradient(ellipse 60% 45% at 55% 48%, color-mix(in srgb, var(--gym-accent) 22%, transparent), transparent 75%);
   animation: liquid-fallback-drift 22s ease-in-out infinite alternate;
+}
+
+:root:not(.dark) body.liquid-bg-fallback::before {
+  background:
+    radial-gradient(ellipse 90% 60% at 20% 25%, rgba(220, 220, 228, 0.55), transparent 70%),
+    radial-gradient(ellipse 80% 55% at 78% 72%, rgba(210, 210, 220, 0.45), transparent 72%),
+    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(230, 230, 236, 0.35), transparent 75%);
 }
 
 @keyframes liquid-fallback-drift {
@@ -76,6 +87,11 @@ body.liquid-bg-fallback::before {
   z-index: 0;
   pointer-events: none;
   opacity: 0.58;
+}
+
+:root:not(.dark) .liquid-ether-bg {
+  opacity: 0.36;
+  mix-blend-mode: multiply;
 }
 
 .liquid-ether-bg.hidden {
@@ -128,6 +144,14 @@ body.liquid-bg-fallback::before {
   );
 }
 
+:root:not(.dark) .gradual-blur[data-position="top"] .gradual-blur-tint {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35) 0%, transparent 100%);
+}
+
+:root:not(.dark) .gradual-blur[data-position="bottom"] .gradual-blur-tint {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.35) 0%, transparent 100%);
+}
+
 .app {
   position: relative;
   z-index: 1;
@@ -163,9 +187,9 @@ body.liquid-bg-fallback::before {
 :root:not(.dark) .card {
   background: var(--glass-card);
   border-color: var(--glass-border);
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.04);
-  backdrop-filter: blur(22px) saturate(1.15);
-  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  box-shadow: 0 4px 28px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  backdrop-filter: blur(20px) saturate(1.05);
+  -webkit-backdrop-filter: blur(20px) saturate(1.05);
 }
 
 .navbar {
@@ -194,6 +218,13 @@ body.liquid-bg-fallback::before {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 4px 18px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+:root:not(.dark) .nav-btn.active {
+  color: #ffffff;
+  background: var(--gym-text);
+  border-color: var(--gym-text);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .page {
