@@ -182,6 +182,9 @@ const ui = {
   daySelect: document.getElementById("daySelect"),
   editWorkoutSelect: document.getElementById("editWorkoutSelect"),
   editorList: document.getElementById("editorList"),
+  togglePlanExercisesBtn: document.getElementById("togglePlanExercisesBtn"),
+  planExercisesBlock: document.getElementById("planExercisesBlock"),
+  planExerciseSummary: document.getElementById("planExerciseSummary"),
   rotationWorkoutList: document.getElementById("rotationWorkoutList"),
   weeklyDaySchedule: document.getElementById("weeklyDaySchedule"),
   workoutNamePanel: document.getElementById("workoutNamePanel"),
@@ -258,6 +261,7 @@ const ui = {
 };
 let upcomingPreviewVisible = false;
 let showPrsOnly = false;
+let planExercisesExpanded = false;
 let exercisesExpanded = false;
 let restTimerInterval = null;
 let restTimerEndsAt = 0;
@@ -1757,6 +1761,30 @@ function bindEditorInput(input, workoutId, exerciseIndex, field) {
   input.addEventListener("blur", apply);
 }
 
+function setPlanExercisesExpanded(open) {
+  planExercisesExpanded = open;
+  if (ui.planExercisesBlock) ui.planExercisesBlock.classList.toggle("hidden", !open);
+  if (ui.togglePlanExercisesBtn) {
+    ui.togglePlanExercisesBtn.textContent = open ? "Hide exercises" : "Show exercises";
+    ui.togglePlanExercisesBtn.setAttribute("aria-expanded", String(open));
+  }
+}
+
+function updatePlanExerciseSummary(workout, previewDay, previewRoutine) {
+  if (!ui.planExerciseSummary) return;
+  const day = previewDay || ui.daySelect?.value || dayNameFromDate(new Date());
+  const routine = previewRoutine || getRoutineForDate(getDateForDayInCurrentWeek(day));
+  const scheduleHint = `${day} on schedule: ${routine.focus}`;
+  if (!workout || ui.editWorkoutSelect?.value === CREATE_WORKOUT_VALUE) {
+    ui.planExerciseSummary.textContent = `Select a workout — ${scheduleHint}`;
+    return;
+  }
+  const count = workout.exercises.length;
+  ui.planExerciseSummary.textContent = count
+    ? `${count} exercise${count === 1 ? "" : "s"} in ${workout.name} · ${scheduleHint}`
+    : `No exercises in ${workout.name} yet — ${scheduleHint}`;
+}
+
 function renderEditor() {
   const previewDay = ui.daySelect.value || dayNameFromDate(new Date());
   const previewRoutine = getRoutineForDate(getDateForDayInCurrentWeek(previewDay));
@@ -1766,11 +1794,9 @@ function renderEditor() {
   ui.daySelectLabel.textContent = workout
     ? `Editing: ${workout.name}`
     : "Workout to edit";
-  const previewNote = document.createElement("p");
-  previewNote.className = "muted";
-  previewNote.textContent = `${previewDay} on your schedule: ${previewRoutine.focus}`;
+  updatePlanExerciseSummary(workout, previewDay, previewRoutine);
+  setPlanExercisesExpanded(planExercisesExpanded);
   ui.editorList.innerHTML = "";
-  ui.editorList.appendChild(previewNote);
   if (!workout) {
     const p = document.createElement("p");
     p.className = "muted";
@@ -1781,7 +1807,7 @@ function renderEditor() {
   if (!workout.exercises.length) {
     const p = document.createElement("p");
     p.className = "muted";
-    p.textContent = "No exercises yet. Add one in the form below.";
+    p.textContent = "No exercises yet. Add one above.";
     ui.editorList.appendChild(p);
     return;
   }
@@ -2101,6 +2127,7 @@ function handleAddExercise(event) {
     return;
   }
   workout.exercises.push(payload);
+  planExercisesExpanded = true;
   saveState();
   ui.exerciseNameInput.value = "";
   ui.exerciseWeightInput.value = "";
@@ -2113,9 +2140,10 @@ function handleAddExercise(event) {
 }
 
 function handleEditWorkoutSelectChange() {
+  planExercisesExpanded = false;
   syncAddWorkoutFromEditor();
   syncWorkoutNamePanel();
-  if (ui.editWorkoutSelect.value !== CREATE_WORKOUT_VALUE) renderEditor();
+  renderEditor();
 }
 
 function setWeekdayPlan(dayName, val) {
@@ -2214,6 +2242,9 @@ function setup() {
   ui.todayWorkoutSelect.addEventListener("change", applyTodayWorkout);
   ui.clearTodayWorkoutBtn.addEventListener("click", clearTodayWorkout);
   ui.toggleUpcomingPreviewBtn.addEventListener("click", () => { upcomingPreviewVisible = !upcomingPreviewVisible; renderUpcoming(); });
+  ui.togglePlanExercisesBtn?.addEventListener("click", () => {
+    setPlanExercisesExpanded(!planExercisesExpanded);
+  });
   ui.applyDayWorkoutBtn.addEventListener("click", applySpecificDayWorkout);
   ui.clearDayWorkoutBtn.addEventListener("click", clearSpecificDayWorkout);
   ui.specificDateInput.addEventListener("change", renderSpecificDayOverride);

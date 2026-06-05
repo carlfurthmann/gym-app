@@ -164,7 +164,7 @@
             <div class="plan-col">
               <div class="content-section plan-editor-panel">
                 <h3>Workout editor</h3>
-                <div class="plan-editor-toolbar">
+                <div class="plan-editor-header">
                   <label id="daySelectLabel" for="editWorkoutSelect">Workout</label>
                   <select id="editWorkoutSelect"></select>
                   <div id="workoutNamePanel" class="create-workout-panel hidden">
@@ -172,7 +172,7 @@
                     <input id="workoutNameInput" type="text" placeholder="e.g. Chest &amp; Arms" />
                     <button id="saveWorkoutNameBtn" class="btn ghost" type="button">Save name</button>
                   </div>
-                  <div class="plan-editor-toolbar-row">
+                  <div class="plan-editor-actions">
                     <div class="plan-preview-day">
                       <label for="daySelect">Preview day</label>
                       <select id="daySelect"></select>
@@ -180,7 +180,6 @@
                     <button id="deleteWorkoutBtn" class="btn ghost danger-text" type="button">Delete workout</button>
                   </div>
                 </div>
-                <div id="editorList" class="editor-list"></div>
                 <div class="plan-add-exercise">
                   <h4 class="plan-subheading">Add exercise</h4>
                   <form id="addExerciseForm" class="add-form">
@@ -210,6 +209,17 @@
                     <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4" />
                     <button type="submit" class="btn primary">Add exercise</button>
                   </form>
+                </div>
+                <div class="plan-exercises-section">
+                  <div class="plan-exercises-toggle-row">
+                    <button id="togglePlanExercisesBtn" class="btn ghost" type="button" aria-expanded="false">
+                      Show exercises
+                    </button>
+                    <p id="planExerciseSummary" class="muted"></p>
+                  </div>
+                  <div id="planExercisesBlock" class="plan-exercises-block hidden">
+                    <div id="editorList" class="editor-list"></div>
+                  </div>
                 </div>
               </div>
             </div>

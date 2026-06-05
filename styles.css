@@ -866,25 +866,13 @@ h2, h3, p {
   padding-bottom: 8px;
 }
 
-.plan-editor-toolbar {
-  position: sticky;
-  top: 72px;
-  z-index: 6;
+.plan-editor-header {
   display: grid;
-  gap: 12px;
-  padding-bottom: 16px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
-:root:not(.dark) .plan-editor-toolbar {
-  background: color-mix(in srgb, #ffffff 92%, transparent);
-}
-
-.plan-editor-toolbar-row {
+.plan-editor-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -900,14 +888,35 @@ h2, h3, p {
   margin: 0;
 }
 
-.plan-editor-toolbar #deleteWorkoutBtn {
+.plan-editor-header #deleteWorkoutBtn {
   margin-top: 0;
 }
 
 .plan-add-exercise {
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-bottom: 20px;
+}
+
+.plan-exercises-section {
+  padding-top: 16px;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.plan-exercises-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.plan-exercises-toggle-row .muted {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-exercises-block:not(.hidden) {
+  margin-top: 4px;
 }
 
 .plan-subheading {
@@ -1200,9 +1209,7 @@ input {
     position: static;
   }
 
-  .plan-editor-toolbar {
-    position: static;
-  }
+
 }
 
 @media (max-width: 768px) {
