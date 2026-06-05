@@ -162,54 +162,55 @@
               </div>
             </div>
             <div class="plan-col">
-              <div class="content-section">
-                <h3>Edit workout</h3>
-                <div class="editor-controls">
+              <div class="content-section plan-editor-panel">
+                <h3>Workout editor</h3>
+                <div class="plan-editor-toolbar">
                   <label id="daySelectLabel" for="editWorkoutSelect">Workout</label>
                   <select id="editWorkoutSelect"></select>
-                  <button id="deleteWorkoutBtn" class="btn ghost danger-text" type="button">Delete workout</button>
-                </div>
-                <div class="editor-controls">
-                  <label for="daySelect">Preview day</label>
-                  <select id="daySelect"></select>
-                </div>
-                <div id="editorList" class="editor-list"></div>
-              </div>
-              <div class="content-section">
-                <h3>Add exercise</h3>
-                <form id="addExerciseForm" class="add-form">
-                  <label for="addWorkoutSelect">Workout</label>
-                  <select id="addWorkoutSelect" required></select>
                   <div id="workoutNamePanel" class="create-workout-panel hidden">
                     <label id="workoutNameLabel" for="workoutNameInput">Workout name</label>
                     <input id="workoutNameInput" type="text" placeholder="e.g. Chest &amp; Arms" />
                     <button id="saveWorkoutNameBtn" class="btn ghost" type="button">Save name</button>
                   </div>
-                  <label for="exerciseNameInput">Exercise</label>
-                  <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
-                  <div class="editor-grid">
-                    <div>
-                      <label for="exerciseWeightInput">Weight (kg)</label>
-                      <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="36" />
+                  <div class="plan-editor-toolbar-row">
+                    <div class="plan-preview-day">
+                      <label for="daySelect">Preview day</label>
+                      <select id="daySelect"></select>
                     </div>
-                    <div>
-                      <label for="exerciseRepsInput">Reps</label>
-                      <input id="exerciseRepsInput" type="text" placeholder="6" />
-                    </div>
-                    <div>
-                      <label for="exerciseSetsInput">Sets</label>
-                      <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="3" />
-                    </div>
+                    <button id="deleteWorkoutBtn" class="btn ghost danger-text" type="button">Delete workout</button>
                   </div>
-                  <label for="exerciseKindInput">Type</label>
-                  <select id="exerciseKindInput">
-                    <option value="weights">Weights</option>
-                    <option value="cardio">Cardio (minutes)</option>
-                  </select>
-                  <label for="exerciseNoteInput">Note (optional)</label>
-                  <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4" />
-                  <button type="submit" class="btn primary">Add exercise</button>
-                </form>
+                </div>
+                <div id="editorList" class="editor-list"></div>
+                <div class="plan-add-exercise">
+                  <h4 class="plan-subheading">Add exercise</h4>
+                  <form id="addExerciseForm" class="add-form">
+                    <select id="addWorkoutSelect" class="hidden" required aria-hidden="true" tabindex="-1"></select>
+                    <label for="exerciseNameInput">Exercise</label>
+                    <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
+                    <div class="editor-grid">
+                      <div>
+                        <label for="exerciseWeightInput">Weight (kg)</label>
+                        <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="36" />
+                      </div>
+                      <div>
+                        <label for="exerciseRepsInput">Reps</label>
+                        <input id="exerciseRepsInput" type="text" placeholder="6" />
+                      </div>
+                      <div>
+                        <label for="exerciseSetsInput">Sets</label>
+                        <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="3" />
+                      </div>
+                    </div>
+                    <label for="exerciseKindInput">Type</label>
+                    <select id="exerciseKindInput">
+                      <option value="weights">Weights</option>
+                      <option value="cardio">Cardio (minutes)</option>
+                    </select>
+                    <label for="exerciseNoteInput">Note (optional)</label>
+                    <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4" />
+                    <button type="submit" class="btn primary">Add exercise</button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>

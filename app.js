@@ -1046,8 +1046,10 @@ function getWeekRestDayOverride(date) {
 }
 
 function isDayRestForWeek(day, date) {
-  if (day === getRestDayForWeek(date)) return true;
-  if (getDayScheduleValue(day) !== SCHEDULE_REST) return false;
+  const mode = getDayScheduleValue(day);
+  if (mode === "workout" && state.weeklyDayConfig[day]?.workoutId) return false;
+  if (day === getRestDayForWeek(date) && mode !== "workout") return true;
+  if (mode !== SCHEDULE_REST) return false;
   const weekOverride = getWeekRestDayOverride(date);
   if (weekOverride && weekOverride !== DEFAULT_REST_DAY && day === DEFAULT_REST_DAY) return false;
   return true;
@@ -1142,8 +1144,13 @@ function renameWorkout(workoutId, name) {
   return true;
 }
 
+function syncAddWorkoutFromEditor() {
+  if (!ui.addWorkoutSelect || !ui.editWorkoutSelect) return;
+  ui.addWorkoutSelect.value = ui.editWorkoutSelect.value;
+}
+
 function syncWorkoutNamePanel() {
-  const val = ui.addWorkoutSelect.value;
+  const val = ui.editWorkoutSelect?.value || ui.addWorkoutSelect.value;
   if (!val) {
     ui.workoutNamePanel.classList.add("hidden");
     return;
@@ -1719,12 +1726,17 @@ function renderPlanPage() {
     option.textContent = name;
     ui.editWorkoutSelect.appendChild(option);
   });
+  const createEdit = document.createElement("option");
+  createEdit.value = CREATE_WORKOUT_VALUE;
+  createEdit.textContent = "+ Create new workout…";
+  ui.editWorkoutSelect.appendChild(createEdit);
   fillWorkoutSelect(ui.addWorkoutSelect, { includeRest: false, includeCreateNew: true });
   ui.restDaySelect.value = getRestDayForWeek(new Date());
   if (!ui.daySelect.value) ui.daySelect.value = dayNameFromDate(new Date());
   renderRotationList();
   renderWeeklySchedule();
   if (!ui.editWorkoutSelect.value && state.workoutLibrary[0]) ui.editWorkoutSelect.value = state.workoutLibrary[0].id;
+  syncAddWorkoutFromEditor();
   syncWorkoutNamePanel();
   renderEditor();
 }
@@ -2039,28 +2051,31 @@ function handleAddWorkoutSelectChange() {
 
 function handleSaveWorkoutName() {
   const name = ui.workoutNameInput.value;
-  if (ui.addWorkoutSelect.value === CREATE_WORKOUT_VALUE) {
+  const selected = ui.editWorkoutSelect.value || ui.addWorkoutSelect.value;
+  if (selected === CREATE_WORKOUT_VALUE) {
     const workout = createWorkout(name);
     if (!workout) return;
-    ui.addWorkoutSelect.value = workout.id;
     ui.editWorkoutSelect.value = workout.id;
+    syncAddWorkoutFromEditor();
     syncWorkoutNamePanel();
     renderAll();
     return;
   }
-  if (!renameWorkout(ui.addWorkoutSelect.value, name)) return;
-  ui.editWorkoutSelect.value = ui.addWorkoutSelect.value;
+  if (!renameWorkout(selected, name)) return;
+  ui.editWorkoutSelect.value = selected;
+  syncAddWorkoutFromEditor();
   renderAll();
 }
 
 function handleAddExercise(event) {
   event.preventDefault();
-  let workoutId = ui.addWorkoutSelect.value;
+  let workoutId = ui.editWorkoutSelect?.value || ui.addWorkoutSelect.value;
   if (workoutId === CREATE_WORKOUT_VALUE) {
     const workout = createWorkout(ui.workoutNameInput.value);
     if (!workout) return;
     workoutId = workout.id;
-    ui.addWorkoutSelect.value = workoutId;
+    ui.editWorkoutSelect.value = workoutId;
+    syncAddWorkoutFromEditor();
   }
   const workout = getWorkoutById(workoutId);
   const kind = ui.exerciseKindInput?.value || "weights";
@@ -2092,8 +2107,15 @@ function handleAddExercise(event) {
   ui.exerciseRepsInput.value = "";
   ui.exerciseSetsInput.value = "";
   if (ui.exerciseNoteInput) ui.exerciseNoteInput.value = "";
-  ui.addWorkoutSelect.value = workoutId;
+  ui.editWorkoutSelect.value = workoutId;
+  syncAddWorkoutFromEditor();
   renderAll();
+}
+
+function handleEditWorkoutSelectChange() {
+  syncAddWorkoutFromEditor();
+  syncWorkoutNamePanel();
+  if (ui.editWorkoutSelect.value !== CREATE_WORKOUT_VALUE) renderEditor();
 }
 
 function setWeekdayPlan(dayName, val) {
@@ -2185,7 +2207,7 @@ function setup() {
   ui.unmarkPastDoneBtn.addEventListener("click", unmarkPastDone);
   ui.restDaySelect.addEventListener("change", handleRestDayChange);
   ui.daySelect.addEventListener("change", renderEditor);
-  ui.editWorkoutSelect.addEventListener("change", renderEditor);
+  ui.editWorkoutSelect.addEventListener("change", handleEditWorkoutSelectChange);
   ui.addWorkoutSelect.addEventListener("change", handleAddWorkoutSelectChange);
   ui.saveWorkoutNameBtn.addEventListener("click", handleSaveWorkoutName);
   ui.addExerciseForm.addEventListener("submit", handleAddExercise);

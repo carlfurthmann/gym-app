@@ -381,6 +381,9 @@ body.liquid-bg-fallback::before {
   position: sticky;
   top: 76px;
   padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .workout-main,
@@ -509,7 +512,7 @@ body.liquid-bg-fallback::before {
 }
 
 #toggleUpcomingPreviewBtn {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 #upcomingPreview:not(.hidden) {
@@ -517,11 +520,42 @@ body.liquid-bg-fallback::before {
 }
 
 .override-actions {
+  margin-top: 16px;
+  gap: 10px;
+}
+
+.content-section > label,
+.content-section > select,
+.content-section > input:not([type="checkbox"]),
+.content-section > .btn,
+.content-section > .top-actions,
+.content-section > .attendance-buttons {
   margin-top: 14px;
 }
 
-#specificWorkoutSelect {
+.content-section > h3 + label,
+.content-section > h3 + p + label,
+.content-section > p.muted + label,
+.content-section > h3:first-child + label {
+  margin-top: 0;
+}
+
+.content-section > h3 + p.muted {
   margin-bottom: 4px;
+}
+
+.workout-aside label + select,
+.workout-aside select + button,
+.workout-aside input + .top-actions,
+.workout-aside label,
+.workout-aside #todayWorkoutSelect,
+.workout-aside #clearTodayWorkoutBtn,
+.workout-aside .override-actions {
+  margin-top: 0;
+}
+
+.workout-aside .section-divider {
+  margin: 6px 0;
 }
 
 .row {
@@ -563,7 +597,13 @@ h2, h3, p {
   background: var(--card-2);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 10px;
+  padding: 14px;
+}
+
+.editor-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .exercise-header {
@@ -611,8 +651,11 @@ h2, h3, p {
 }
 
 .exercise-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-top: 10px;
-  padding-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
   padding-left: 42px;
 }
@@ -625,8 +668,12 @@ h2, h3, p {
   transform: rotate(-90deg);
 }
 
-.exercise-best {
-  margin: 4px 0 0;
+.exercise-best,
+.exercise-one-rm-record,
+.exercise-warmup,
+.exercise-note,
+.pr-detail {
+  margin: 0;
 }
 
 .workout-toolbar {
@@ -732,12 +779,20 @@ h2, h3, p {
 }
 
 .editor-controls {
-  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .add-form {
   display: grid;
-  gap: 10px;
+  gap: 14px;
+}
+
+.form-stack {
+  display: grid;
+  gap: 14px;
 }
 
 .rotation-list,
@@ -793,10 +848,72 @@ h2, h3, p {
 }
 
 .create-workout-panel {
-  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
   background: var(--card-2);
   border-radius: 8px;
   border: 1px dashed var(--border);
+}
+
+.create-workout-panel .btn {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.plan-editor-panel {
+  padding-bottom: 8px;
+}
+
+.plan-editor-toolbar {
+  position: sticky;
+  top: 72px;
+  z-index: 6;
+  display: grid;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+:root:not(.dark) .plan-editor-toolbar {
+  background: color-mix(in srgb, #ffffff 92%, transparent);
+}
+
+.plan-editor-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.plan-preview-day {
+  flex: 1;
+  min-width: 180px;
+}
+
+.plan-preview-day label {
+  margin: 0;
+}
+
+.plan-editor-toolbar #deleteWorkoutBtn {
+  margin-top: 0;
+}
+
+.plan-add-exercise {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.plan-subheading {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  color: var(--heading);
 }
 
 label {
@@ -963,9 +1080,9 @@ input {
 .one-rm-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 8px;
+  gap: 10px;
   align-items: end;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .one-rm-row label {
@@ -1019,7 +1136,6 @@ input {
 .danger-text {
   color: var(--danger);
   border-color: var(--danger);
-  margin-top: 8px;
 }
 
 .editor-item-head {
@@ -1027,13 +1143,21 @@ input {
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .editor-section-label {
   font-size: 0.8rem;
   color: var(--muted);
-  margin: 8px 0 4px;
+  margin: 0;
+}
+
+.editor-item .muted {
+  margin: 0;
+}
+
+.editor-item label {
+  margin: 0;
 }
 
 .editor-row-2 {
@@ -1073,6 +1197,10 @@ input {
   }
 
   .workout-aside {
+    position: static;
+  }
+
+  .plan-editor-toolbar {
     position: static;
   }
 }
@@ -1205,8 +1333,13 @@ input {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-top: 14px;
+  margin-bottom: 0;
   color: var(--text);
+}
+
+.toggle-row:first-of-type {
+  margin-top: 0;
 }
 
 .toggle-row input {
