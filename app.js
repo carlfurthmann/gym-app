@@ -310,7 +310,7 @@ function migrateState(parsed) {
     age: s.userProfile?.age || ""
   };
   s.userSettings = {
-    colorTheme: THEME_OPTIONS.some((t) => t.id === s.userSettings?.colorTheme) ? s.userSettings.colorTheme : "orange",
+    colorTheme: THEME_OPTIONS.some((t) => t.id === s.userSettings?.colorTheme) ? s.userSettings.colorTheme : "purple",
     darkMode: Boolean(s.userSettings?.darkMode)
   };
   s.workoutLibrary.forEach((w) => w.exercises.forEach(normalizeExercise));
@@ -369,15 +369,16 @@ function applyStatePayload(payload) {
 }
 
 function applyUserTheme() {
-  const settings = state.userSettings || { colorTheme: "orange", darkMode: false };
+  const settings = state.userSettings || { colorTheme: "purple", darkMode: false };
+  const theme = settings.colorTheme || "purple";
   const root = document.documentElement;
   root.classList.toggle("dark", Boolean(settings.darkMode));
-  if (!settings.colorTheme || settings.colorTheme === "orange") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", settings.colorTheme);
+  if (theme === "orange") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", theme);
 }
 
 function setColorTheme(themeId) {
-  state.userSettings = state.userSettings || { colorTheme: "orange", darkMode: false };
+  state.userSettings = state.userSettings || { colorTheme: "purple", darkMode: false };
   state.userSettings.colorTheme = themeId;
   applyUserTheme();
   saveState();
