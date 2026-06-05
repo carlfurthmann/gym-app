@@ -3,253 +3,322 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gym Split Tracker</title>
+    <title>BBL — Big Boys Lift</title>
     <link rel="stylesheet" href="themes.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="liquidEtherBg" class="liquid-ether-bg hidden" aria-hidden="true"></div>
-    <div id="gradualBlurLayer" class="gradual-blur-layer" aria-hidden="true"></div>
-    <main class="app">
-      <header class="topbar card">
-        <h1>Gym Split Tracker</h1>
-        <p id="todayLabel"></p>
-        <p id="offlineIndicator" class="sync-strip muted hidden"></p>
+
+    <div class="app-shell">
+      <header class="site-header">
+        <div class="site-header-inner">
+          <button class="brand" data-page-target="homePage" type="button">
+            <span class="brand-mark">BBL</span>
+            <span class="brand-tag">Big Boys Lift</span>
+          </button>
+          <nav class="site-nav" aria-label="Main">
+            <button class="nav-btn active" data-page-target="homePage" type="button">Home</button>
+            <button class="nav-btn" data-page-target="workoutPage" type="button">Workout</button>
+            <button class="nav-btn" data-page-target="planPage" type="button">Plan</button>
+            <button class="nav-btn" data-page-target="recordsPage" type="button">Records</button>
+            <button class="nav-btn" data-page-target="calendarPage" type="button">Calendar</button>
+          </nav>
+          <div class="site-actions">
+            <div class="site-meta">
+              <p id="todayLabel" class="site-date"></p>
+              <p id="offlineIndicator" class="sync-strip muted hidden"></p>
+            </div>
+            <button
+              id="profileAvatarBtn"
+              class="profile-avatar-btn"
+              data-page-target="profilePage"
+              type="button"
+              aria-label="Profile and settings"
+              title="Profile and settings"
+            >
+              <span id="profileAvatarInitials" class="profile-avatar-initials">BB</span>
+            </button>
+          </div>
+        </div>
       </header>
 
-      <nav class="navbar card">
-        <button class="nav-btn active" data-page-target="homePage" type="button">Home</button>
-        <button class="nav-btn" data-page-target="workoutPage" type="button">Workout</button>
-        <button class="nav-btn" data-page-target="planPage" type="button">Plan</button>
-        <button class="nav-btn" data-page-target="recordsPage" type="button">Records</button>
-        <button class="nav-btn" data-page-target="calendarPage" type="button">Calendar</button>
-        <button class="nav-btn" data-page-target="profilePage" type="button">Profile</button>
-      </nav>
-
-      <section id="homePage" class="page active-page">
-        <div class="card">
-          <h2>Overview</h2>
-          <p id="monthlyAttendanceCounter" class="counter-text"></p>
-          <p id="monthlyKgCounter" class="counter-text"></p>
-          <p id="dailyKgCounter" class="counter-text"></p>
-          <p id="dailyCardioCounter" class="counter-text muted"></p>
-        </div>
-        <div class="card">
-          <h3 id="homeTodayTitle">Today</h3>
-          <p id="homeTodaySubtitle" class="muted"></p>
-          <p id="homeTodayCount" class="muted"></p>
-        </div>
-        <div class="card">
-          <h3>Upcoming Day</h3>
-          <p id="upcomingText"></p>
-          <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
-          <div id="upcomingPreview" class="exercise-list hidden"></div>
-        </div>
-      </section>
-
-      <section id="workoutPage" class="page hidden">
-        <div class="card">
-          <h3>Today's Workout</h3>
-          <p class="muted">Changing this updates <span id="todayPlanDayLabel"></span> in Plan → Weekly Schedule (fixed workout for that weekday).</p>
-          <label for="todayWorkoutSelect">Workout</label>
-          <select id="todayWorkoutSelect"></select>
-          <div class="top-actions override-actions">
-            <button id="clearTodayWorkoutBtn" class="btn ghost" type="button">Back to auto rotation</button>
+      <main class="app-main">
+        <section id="homePage" class="page">
+          <div class="home-hero">
+            <p class="home-eyebrow" id="homeEyebrow">Your training hub</p>
+            <h1 class="home-title">Big <span class="text-accent">Boys</span> Lift</h1>
+            <p id="homeTodaySubtitle" class="home-lead muted"></p>
+            <div class="home-cta">
+              <button id="goWorkoutBtn" class="btn primary" type="button">Start today&apos;s workout</button>
+              <button class="btn ghost nav-jump" data-page-target="planPage" type="button">View plan</button>
+            </div>
           </div>
-        </div>
-        <div class="card">
-          <div class="routine-header-block">
-            <div class="row">
-              <h2 id="routineTitle">Today's Routine</h2>
-              <div class="top-actions">
-                <button id="completeWorkoutBtn" class="btn primary">Complete Workout</button>
-                <button id="resetTodayBtn" class="btn ghost">Reset Day</button>
+
+          <div class="stats-grid">
+            <div class="stat-tile">
+              <span class="stat-label">This month</span>
+              <p id="monthlyAttendanceCounter" class="stat-value"></p>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-label">Volume</span>
+              <p id="monthlyKgCounter" class="stat-value"></p>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-label">Today</span>
+              <p id="dailyKgCounter" class="stat-value"></p>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-label">Cardio</span>
+              <p id="dailyCardioCounter" class="stat-value muted"></p>
+            </div>
+          </div>
+
+          <div class="home-panels">
+            <div class="content-section">
+              <h2 id="homeTodayTitle">Today</h2>
+              <p id="homeTodayCount" class="muted"></p>
+            </div>
+            <div class="content-section">
+              <h2>Upcoming</h2>
+              <p id="upcomingText"></p>
+              <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
+              <div id="upcomingPreview" class="exercise-list hidden"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="workoutPage" class="page hidden">
+          <div class="page-header">
+            <h1>Workout</h1>
+            <p class="muted">Log sets, timers, and PRs for today.</p>
+          </div>
+          <div class="workout-layout">
+            <aside class="content-section workout-aside">
+              <h3>Today&apos;s workout</h3>
+              <p class="muted">Updates <span id="todayPlanDayLabel"></span> in Plan.</p>
+              <label for="todayWorkoutSelect">Workout</label>
+              <select id="todayWorkoutSelect"></select>
+              <button id="clearTodayWorkoutBtn" class="btn ghost" type="button">Back to auto rotation</button>
+              <hr class="section-divider" />
+              <h3>Override one day</h3>
+              <p class="muted">Change a single date only.</p>
+              <label for="specificDateInput">Date</label>
+              <input id="specificDateInput" type="date" />
+              <label for="specificWorkoutSelect">Workout</label>
+              <select id="specificWorkoutSelect"></select>
+              <div class="top-actions override-actions">
+                <button id="applyDayWorkoutBtn" class="btn primary" type="button">Apply</button>
+                <button id="clearDayWorkoutBtn" class="btn ghost" type="button">Clear</button>
+              </div>
+              <p id="specificDateSummary" class="muted"></p>
+            </aside>
+            <div class="content-section workout-main">
+              <div class="routine-header-block">
+                <div class="row">
+                  <h2 id="routineTitle">Today&apos;s routine</h2>
+                  <div class="top-actions">
+                    <button id="completeWorkoutBtn" class="btn primary">Complete workout</button>
+                    <button id="resetTodayBtn" class="btn ghost">Reset day</button>
+                  </div>
+                </div>
+                <p id="routineSubtitle"></p>
+              </div>
+              <div class="workout-toolbar top-actions">
+                <button id="showPrsOnlyBtn" class="btn ghost" type="button">Show PRs only</button>
+                <button id="expandAllExercisesBtn" class="btn ghost" type="button">Expand all</button>
+                <button id="collapseAllExercisesBtn" class="btn ghost" type="button">Collapse all</button>
+              </div>
+              <div id="workoutHistoryBlock" class="workout-history hidden">
+                <p id="workoutHistoryTitle" class="muted"></p>
+                <div id="workoutHistoryList" class="history-list"></div>
+                <button id="copyHistoryWeightsBtn" class="btn ghost" type="button">Copy weights to today</button>
+              </div>
+              <div id="exerciseList" class="exercise-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="planPage" class="page hidden">
+          <div class="page-header">
+            <h1>Plan</h1>
+            <p class="muted">Build workouts, set your weekly rotation, and edit exercises.</p>
+          </div>
+          <div class="plan-layout">
+            <div class="plan-col">
+              <div class="content-section">
+                <h3>My workouts</h3>
+                <p class="muted">Check workouts to include in your rotation.</p>
+                <div id="rotationWorkoutList" class="rotation-list"></div>
+              </div>
+              <div class="content-section">
+                <h3>Weekly schedule</h3>
+                <p class="muted">Auto days pull from your rotation pool in order.</p>
+                <div class="editor-controls">
+                  <label for="restDaySelect">Rest day (this week only)</label>
+                  <select id="restDaySelect"></select>
+                </div>
+                <div id="weeklyDaySchedule" class="weekly-schedule"></div>
               </div>
             </div>
-            <p id="routineSubtitle"></p>
-          </div>
-          <div class="workout-toolbar top-actions">
-            <button id="showPrsOnlyBtn" class="btn ghost" type="button">Show PRs only</button>
-            <button id="expandAllExercisesBtn" class="btn ghost" type="button">Expand all</button>
-            <button id="collapseAllExercisesBtn" class="btn ghost" type="button">Collapse all</button>
-          </div>
-          <div id="workoutHistoryBlock" class="workout-history hidden">
-            <p id="workoutHistoryTitle" class="muted"></p>
-            <div id="workoutHistoryList" class="history-list"></div>
-            <button id="copyHistoryWeightsBtn" class="btn ghost" type="button">Copy weights to today</button>
-          </div>
-          <div id="exerciseList" class="exercise-list"></div>
-        </div>
-        <div class="card">
-          <h3>Override One Specific Day</h3>
-          <p class="muted">Choose a date and workout. This only changes that single date.</p>
-          <label for="specificDateInput">Date</label>
-          <input id="specificDateInput" type="date" />
-          <label for="specificWorkoutSelect">Workout for this date</label>
-          <select id="specificWorkoutSelect"></select>
-          <div class="top-actions override-actions">
-            <button id="applyDayWorkoutBtn" class="btn primary" type="button">Apply to Date</button>
-            <button id="clearDayWorkoutBtn" class="btn ghost" type="button">Clear Override</button>
-          </div>
-          <p id="specificDateSummary" class="muted"></p>
-        </div>
-      </section>
-
-      <section id="planPage" class="page hidden">
-        <div class="card">
-          <h3>My Workouts</h3>
-          <p class="muted">All workouts live here. Check the ones you want in your weekly rotation.</p>
-          <div id="rotationWorkoutList" class="rotation-list"></div>
-        </div>
-        <div class="card">
-          <h3>Weekly Schedule</h3>
-          <p class="muted">Auto days take the next workout from your rotation pool (in order). Fixed and rest days are skipped in that order. Labels below show this week’s workout.</p>
-          <div class="editor-controls">
-            <label for="restDaySelect">Rest Day (current week only)</label>
-            <select id="restDaySelect"></select>
-          </div>
-          <div id="weeklyDaySchedule" class="weekly-schedule"></div>
-        </div>
-        <div class="card">
-          <h3>Edit Workout</h3>
-          <p class="muted">Update weights/reps/sets for a workout template.</p>
-          <div class="editor-controls">
-            <label id="daySelectLabel" for="editWorkoutSelect">Workout to edit</label>
-            <select id="editWorkoutSelect"></select>
-            <button id="deleteWorkoutBtn" class="btn ghost danger-text" type="button">Delete this workout</button>
-          </div>
-          <div class="editor-controls">
-            <label for="daySelect">Preview day on schedule</label>
-            <select id="daySelect"></select>
-          </div>
-          <div id="editorList" class="editor-list"></div>
-        </div>
-        <div class="card">
-          <h3>Add New Exercise</h3>
-          <p class="muted">Pick a workout to rename it, or choose “Create new workout” to name a new template before adding exercises.</p>
-          <form id="addExerciseForm" class="add-form">
-            <label for="addWorkoutSelect">Workout</label>
-            <select id="addWorkoutSelect" required></select>
-            <div id="workoutNamePanel" class="create-workout-panel hidden">
-              <label id="workoutNameLabel" for="workoutNameInput">Workout name</label>
-              <input id="workoutNameInput" type="text" placeholder="e.g. Chest &amp; Arms" />
-              <button id="saveWorkoutNameBtn" class="btn ghost" type="button">Save name</button>
-            </div>
-            <label for="exerciseNameInput">Exercise Name</label>
-            <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
-            <label for="exerciseWeightInput">Weight (kg)</label>
-            <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="e.g. 36" />
-            <label for="exerciseRepsInput">Reps</label>
-            <input id="exerciseRepsInput" type="text" placeholder="e.g. 6 or 5,5,5" />
-            <label for="exerciseSetsInput">Sets</label>
-            <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="e.g. 3" />
-            <label for="exerciseKindInput">Type</label>
-            <select id="exerciseKindInput">
-              <option value="weights">Weights</option>
-              <option value="cardio">Cardio (minutes)</option>
-            </select>
-            <label for="exerciseNoteInput">Note (optional)</label>
-            <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4, felt heavy" />
-            <button type="submit" class="btn primary">Add Exercise</button>
-          </form>
-        </div>
-      </section>
-
-      <section id="recordsPage" class="page hidden">
-        <div class="card">
-          <h2>Records &amp; PRs</h2>
-          <p class="muted"><strong>Volume PR</strong> updates only when you beat your previous best (usually after <strong>Complete Workout</strong>). <strong>1RM</strong> is logged separately with <strong>Save 1RM</strong> on Workout or in Plan.</p>
-        </div>
-        <div class="card">
-          <h3>1 rep maxes</h3>
-          <p id="recordsOneRmSummary" class="muted"></p>
-          <div id="recordsOneRmList" class="records-list"></div>
-        </div>
-        <div class="card">
-          <h3>Today’s volume PRs</h3>
-          <p id="recordsTodaySummary" class="muted"></p>
-          <div id="recordsTodayList" class="records-list"></div>
-        </div>
-        <div class="card">
-          <h3>All volume bests</h3>
-          <p id="recordsAllSummary" class="muted"></p>
-          <div id="recordsAllList" class="records-list"></div>
-        </div>
-      </section>
-
-      <section id="profilePage" class="page hidden">
-        <div class="card profile-hero">
-          <h2>Profile</h2>
-          <p id="profileEmailLine" class="muted">Not signed in</p>
-          <p id="profileSummaryLine" class="counter-text"></p>
-        </div>
-        <div class="card">
-          <h3>About you</h3>
-          <label for="profileDisplayName">Display name</label>
-          <input id="profileDisplayName" type="text" placeholder="Your name" />
-          <label for="profileHeight">Height (cm)</label>
-          <input id="profileHeight" type="text" inputmode="decimal" placeholder="e.g. 175" />
-          <label for="profileBodyWeight">Body weight (kg)</label>
-          <input id="profileBodyWeight" type="text" inputmode="decimal" placeholder="e.g. 78" />
-          <label for="profileAge">Age</label>
-          <input id="profileAge" type="text" inputmode="numeric" placeholder="e.g. 28" />
-          <button id="saveProfileBtn" class="btn primary" type="button">Save profile</button>
-        </div>
-        <div class="card">
-          <h3>Appearance</h3>
-          <label class="toggle-row">
-            <span>Dark mode</span>
-            <input id="darkModeToggle" type="checkbox" />
-          </label>
-          <label class="toggle-row">
-            <span>Animated background</span>
-            <input id="liquidBackgroundToggle" type="checkbox" />
-          </label>
-          <p id="liquidBackgroundHint" class="muted hidden">Uses WebGL — off by default on phones for performance.</p>
-          <p class="muted">Colour theme</p>
-          <div id="themeSwatches" class="theme-grid"></div>
-        </div>
-        <div class="card" id="syncCard">
-          <h3>Account &amp; sync</h3>
-          <p id="syncStatus" class="muted">Not connected</p>
-          <div id="syncLoggedOut">
-            <label for="syncEmail">Email</label>
-            <input id="syncEmail" type="email" autocomplete="email" placeholder="you@email.com" />
-            <label for="syncPassword">Password</label>
-            <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Password" />
-            <div class="top-actions override-actions">
-              <button id="syncLoginBtn" class="btn primary" type="button">Log in</button>
-              <button id="syncSignupBtn" class="btn ghost" type="button">Sign up</button>
+            <div class="plan-col">
+              <div class="content-section">
+                <h3>Edit workout</h3>
+                <div class="editor-controls">
+                  <label id="daySelectLabel" for="editWorkoutSelect">Workout</label>
+                  <select id="editWorkoutSelect"></select>
+                  <button id="deleteWorkoutBtn" class="btn ghost danger-text" type="button">Delete workout</button>
+                </div>
+                <div class="editor-controls">
+                  <label for="daySelect">Preview day</label>
+                  <select id="daySelect"></select>
+                </div>
+                <div id="editorList" class="editor-list"></div>
+              </div>
+              <div class="content-section">
+                <h3>Add exercise</h3>
+                <form id="addExerciseForm" class="add-form">
+                  <label for="addWorkoutSelect">Workout</label>
+                  <select id="addWorkoutSelect" required></select>
+                  <div id="workoutNamePanel" class="create-workout-panel hidden">
+                    <label id="workoutNameLabel" for="workoutNameInput">Workout name</label>
+                    <input id="workoutNameInput" type="text" placeholder="e.g. Chest &amp; Arms" />
+                    <button id="saveWorkoutNameBtn" class="btn ghost" type="button">Save name</button>
+                  </div>
+                  <label for="exerciseNameInput">Exercise</label>
+                  <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
+                  <div class="editor-grid">
+                    <div>
+                      <label for="exerciseWeightInput">Weight (kg)</label>
+                      <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="36" />
+                    </div>
+                    <div>
+                      <label for="exerciseRepsInput">Reps</label>
+                      <input id="exerciseRepsInput" type="text" placeholder="6" />
+                    </div>
+                    <div>
+                      <label for="exerciseSetsInput">Sets</label>
+                      <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="3" />
+                    </div>
+                  </div>
+                  <label for="exerciseKindInput">Type</label>
+                  <select id="exerciseKindInput">
+                    <option value="weights">Weights</option>
+                    <option value="cardio">Cardio (minutes)</option>
+                  </select>
+                  <label for="exerciseNoteInput">Note (optional)</label>
+                  <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4" />
+                  <button type="submit" class="btn primary">Add exercise</button>
+                </form>
+              </div>
             </div>
           </div>
-          <div id="syncLoggedIn" class="hidden">
-            <p id="syncUserEmail" class="muted"></p>
-            <div class="top-actions override-actions">
-              <button id="syncPullBtn" class="btn ghost" type="button">Load from cloud</button>
-              <button id="syncPushBtn" class="btn primary" type="button">Save to cloud</button>
-              <button id="syncLogoutBtn" class="btn ghost" type="button">Log out</button>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="calendarPage" class="page hidden">
-        <div class="card">
-          <h3>Gym Attendance (This Month)</h3>
-          <p class="muted">Highlighted = gym day done, red tint = missed, muted = rest day.</p>
-          <div class="attendance-controls">
-            <label for="pastDateInput">Mark past day as done</label>
-            <input id="pastDateInput" type="date" />
-            <div class="attendance-buttons">
-              <button id="markPastDoneBtn" class="btn primary" type="button">Mark Done</button>
-              <button id="unmarkPastDoneBtn" class="btn ghost" type="button">Unmark</button>
+        <section id="recordsPage" class="page hidden">
+          <div class="page-header">
+            <h1>Records</h1>
+            <p class="muted">Volume PRs update on complete workout. Log 1RM separately with Save 1RM.</p>
+          </div>
+          <div class="records-layout">
+            <div class="content-section">
+              <h3>1 rep maxes</h3>
+              <p id="recordsOneRmSummary" class="muted"></p>
+              <div id="recordsOneRmList" class="records-list"></div>
+            </div>
+            <div class="content-section">
+              <h3>Today&apos;s volume PRs</h3>
+              <p id="recordsTodaySummary" class="muted"></p>
+              <div id="recordsTodayList" class="records-list"></div>
+            </div>
+            <div class="content-section">
+              <h3>All volume bests</h3>
+              <p id="recordsAllSummary" class="muted"></p>
+              <div id="recordsAllList" class="records-list"></div>
             </div>
           </div>
-          <div id="calendarMonthLabel" class="calendar-month"></div>
-          <div id="calendarGrid" class="calendar-grid"></div>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        <section id="calendarPage" class="page hidden">
+          <div class="page-header">
+            <h1>Calendar</h1>
+            <p class="muted">Green = done, red = missed, muted = rest.</p>
+          </div>
+          <div class="calendar-layout">
+            <div class="content-section calendar-side">
+              <label for="pastDateInput">Mark past day</label>
+              <input id="pastDateInput" type="date" />
+              <div class="attendance-buttons">
+                <button id="markPastDoneBtn" class="btn primary" type="button">Mark done</button>
+                <button id="unmarkPastDoneBtn" class="btn ghost" type="button">Unmark</button>
+              </div>
+            </div>
+            <div class="content-section calendar-main">
+              <div id="calendarMonthLabel" class="calendar-month"></div>
+              <div id="calendarGrid" class="calendar-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="profilePage" class="page hidden">
+          <div class="page-header profile-intro">
+            <h1>Profile</h1>
+            <p id="profileEmailLine" class="muted">Not signed in</p>
+            <p id="profileSummaryLine" class="counter-text"></p>
+          </div>
+          <div class="profile-layout">
+            <div class="content-section">
+              <h3>About you</h3>
+              <label for="profileDisplayName">Display name</label>
+              <input id="profileDisplayName" type="text" placeholder="Your name" />
+              <label for="profileHeight">Height (cm)</label>
+              <input id="profileHeight" type="text" inputmode="decimal" placeholder="e.g. 175" />
+              <label for="profileBodyWeight">Body weight (kg)</label>
+              <input id="profileBodyWeight" type="text" inputmode="decimal" placeholder="e.g. 78" />
+              <label for="profileAge">Age</label>
+              <input id="profileAge" type="text" inputmode="numeric" placeholder="e.g. 28" />
+              <button id="saveProfileBtn" class="btn primary" type="button">Save profile</button>
+            </div>
+            <div class="content-section">
+              <h3>Appearance</h3>
+              <label class="toggle-row">
+                <span>Dark mode</span>
+                <input id="darkModeToggle" type="checkbox" />
+              </label>
+              <label class="toggle-row">
+                <span>Animated background</span>
+                <input id="liquidBackgroundToggle" type="checkbox" />
+              </label>
+              <p id="liquidBackgroundHint" class="muted hidden">Uses WebGL — off by default on phones for performance.</p>
+              <p class="muted">Colour theme</p>
+              <div id="themeSwatches" class="theme-grid"></div>
+            </div>
+            <div class="content-section" id="syncCard">
+              <h3>Account &amp; sync</h3>
+              <p id="syncStatus" class="muted">Not connected</p>
+              <div id="syncLoggedOut">
+                <label for="syncEmail">Email</label>
+                <input id="syncEmail" type="email" autocomplete="email" placeholder="you@email.com" />
+                <label for="syncPassword">Password</label>
+                <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Password" />
+                <div class="top-actions override-actions">
+                  <button id="syncLoginBtn" class="btn primary" type="button">Log in</button>
+                  <button id="syncSignupBtn" class="btn ghost" type="button">Sign up</button>
+                </div>
+              </div>
+              <div id="syncLoggedIn" class="hidden">
+                <p id="syncUserEmail" class="muted"></p>
+                <div class="top-actions override-actions">
+                  <button id="syncPullBtn" class="btn ghost" type="button">Load from cloud</button>
+                  <button id="syncPushBtn" class="btn primary" type="button">Save to cloud</button>
+                  <button id="syncLogoutBtn" class="btn ghost" type="button">Log out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
 
     <template id="exerciseTemplate">
       <article class="exercise-item collapsible">
@@ -311,7 +380,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.130.1/build/three.min.js"></script>
     <script src="config.js"></script>
-    <script src="gradual-blur.js"></script>
     <script src="liquid-ether.js"></script>
     <script src="app.js"></script>
   </body>

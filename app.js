@@ -52,6 +52,7 @@ let supabaseClient = null;
 let cloudPushTimer = null;
 let liquidEtherInstance = null;
 let liquidEtherFailed = false;
+let authSession = null;
 
 const LIQUID_THEME_COLORS = {
   orange: ["#F97316", "#FB923C", "#FDBA74"],
@@ -104,13 +105,8 @@ function initLiquidBackground() {
 
   if (!enabled || reducedMotion) {
     mount.classList.add("hidden");
-    if (typeof window.initPageGradualBlur === "function") window.initPageGradualBlur({ enabled: false });
     updateLiquidBackgroundHint(reducedMotion);
     return;
-  }
-
-  if (typeof window.initPageGradualBlur === "function") {
-    window.initPageGradualBlur({ enabled: true, opacity: 0.82, strength: 2.4, topHeight: "5rem", bottomHeight: "5rem" });
   }
 
   if (typeof createLiquidEther !== "function" || typeof THREE === "undefined") {
@@ -144,7 +140,7 @@ function updateLiquidBackgroundHint(reducedMotion) {
     return;
   }
   if (liquidEtherFailed && state.userSettings?.liquidBackground) {
-    ui.liquidBackgroundHint.textContent = "WebGL fluid unavailable — using animated gradient + edge blur instead.";
+    ui.liquidBackgroundHint.textContent = "WebGL fluid unavailable — using animated gradient instead.";
     ui.liquidBackgroundHint.classList.remove("hidden");
     return;
   }
@@ -247,6 +243,7 @@ const ui = {
   recordsAllList: document.getElementById("recordsAllList"),
   recordsOneRmSummary: document.getElementById("recordsOneRmSummary"),
   recordsOneRmList: document.getElementById("recordsOneRmList"),
+  profileAvatarInitials: document.getElementById("profileAvatarInitials"),
   profileEmailLine: document.getElementById("profileEmailLine"),
   profileSummaryLine: document.getElementById("profileSummaryLine"),
   profileDisplayName: document.getElementById("profileDisplayName"),
@@ -555,6 +552,7 @@ function renderThemeSwatches() {
 
 function renderProfilePage() {
   const profile = state.userProfile || {};
+  updateProfileAvatar();
   if (ui.profileDisplayName && document.activeElement !== ui.profileDisplayName) ui.profileDisplayName.value = profile.displayName || "";
   if (ui.profileHeight && document.activeElement !== ui.profileHeight) ui.profileHeight.value = profile.heightCm || "";
   if (ui.profileBodyWeight && document.activeElement !== ui.profileBodyWeight) ui.profileBodyWeight.value = profile.bodyWeightKg || "";
@@ -839,11 +837,13 @@ function setSyncStatus(message) {
 }
 
 function updateSyncUI(session) {
+  authSession = session;
   if (!session) {
     ui.syncLoggedOut.classList.remove("hidden");
     ui.syncLoggedIn.classList.add("hidden");
     setSyncStatus("Log in to sync across devices.");
     updateProfileAuthLine(null);
+    updateProfileAvatar();
     return;
   }
   ui.syncLoggedOut.classList.add("hidden");
@@ -851,6 +851,7 @@ function updateSyncUI(session) {
   ui.syncUserEmail.textContent = `Logged in as ${session.user.email}`;
   setSyncStatus("Connected — changes auto-save to cloud.");
   updateProfileAuthLine(session);
+  updateProfileAvatar();
 }
 
 function mergePersonalBestRecord(a, b) {
@@ -1251,13 +1252,34 @@ function renderWorkoutHistory(todayRoutine) {
   };
 }
 
+function getProfileInitials() {
+  const name = state.userProfile?.displayName?.trim();
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (authSession?.user?.email) return authSession.user.email[0].toUpperCase();
+  return "BB";
+}
+
+function updateProfileAvatar() {
+  if (ui.profileAvatarInitials) ui.profileAvatarInitials.textContent = getProfileInitials();
+}
+
 function navigateToPage(pageId) {
-  ui.navButtons.forEach((b) => b.classList.toggle("active", b.dataset.pageTarget === pageId));
+  document.querySelectorAll(".site-nav .nav-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.pageTarget === pageId);
+  });
+  document.querySelectorAll(".profile-avatar-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.pageTarget === pageId);
+  });
   ui.pages.forEach((p) => p.classList.toggle("hidden", p.id !== pageId));
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function renderNav() {
-  ui.navButtons.forEach((btn) => {
+  document.querySelectorAll("[data-page-target]").forEach((btn) => {
     btn.addEventListener("click", () => navigateToPage(btn.dataset.pageTarget));
   });
 }
@@ -1383,7 +1405,9 @@ function renderHomeAndWorkout() {
   const todayName = dayNameFromDate(today);
   ui.todayLabel.textContent = `Today is ${todayName}`;
   ui.homeTodayTitle.textContent = `${todayName}: ${todayRoutine.focus}`;
-  ui.homeTodaySubtitle.textContent = todayRoutine.exercises.length ? "Your scheduled workout is ready." : "Rest and recover.";
+  ui.homeTodaySubtitle.textContent = todayRoutine.exercises.length
+    ? `${todayRoutine.focus} — ${todayRoutine.exercises.length} exercises on deck.`
+    : "Rest day — recover and come back stronger.";
   ui.homeTodayCount.textContent = `Exercises: ${todayRoutine.exercises.length}`;
   const kg = computeTotalKgForDate(today, todayRoutine);
   const cardio = computeCardioMinutesForDate(today, todayRoutine);
@@ -2175,9 +2199,6 @@ function setup() {
   ui.darkModeToggle?.addEventListener("change", () => setDarkMode(ui.darkModeToggle.checked));
   ui.liquidBackgroundToggle?.addEventListener("change", () => setLiquidBackground(ui.liquidBackgroundToggle.checked));
   initLiquidBackground();
-  if (!state.userSettings?.liquidBackground && typeof window.initPageGradualBlur === "function") {
-    window.initPageGradualBlur({ enabled: true, opacity: 0.7, strength: 1.8, topHeight: "4.5rem", bottomHeight: "4.5rem" });
-  }
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;
     renderHomeAndWorkout();

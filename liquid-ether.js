@@ -128,6 +128,8 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
       this.takeoverDuration = 0.25;
       this.takeoverFrom = new THREE.Vector2();
       this.takeoverTo = new THREE.Vector2();
+      this.touchStartX = 0;
+      this.touchStartY = 0;
       this.onInteract = null;
       this._onMouseMove = this.onDocumentMouseMove.bind(this);
       this._onTouchStart = this.onDocumentTouchStart.bind(this);
@@ -205,9 +207,16 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
       this.setCoords(event.clientX, event.clientY);
       this.hasUserControl = true;
     }
+    isScrollGesture(clientX, clientY) {
+      const dx = Math.abs(clientX - this.touchStartX);
+      const dy = Math.abs(clientY - this.touchStartY);
+      return dy > 12 && dy > dx * 1.25;
+    }
     onDocumentTouchStart(event) {
       if (event.touches.length !== 1) return;
       const t = event.touches[0];
+      this.touchStartX = t.clientX;
+      this.touchStartY = t.clientY;
       if (!this.updateHoverState(t.clientX, t.clientY)) return;
       if (this.onInteract) this.onInteract();
       this.setCoords(t.clientX, t.clientY);
@@ -216,6 +225,7 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     onDocumentTouchMove(event) {
       if (event.touches.length !== 1) return;
       const t = event.touches[0];
+      if (this.isScrollGesture(t.clientX, t.clientY)) return;
       if (!this.updateHoverState(t.clientX, t.clientY)) return;
       if (this.onInteract) this.onInteract();
       this.setCoords(t.clientX, t.clientY);
