@@ -77,7 +77,13 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
       this.container = container;
       this.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       this.resize();
-      this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        alpha: true,
+        powerPreference: "high-performance",
+        preserveDrawingBuffer: true
+      });
+      if (this.renderer.debug) this.renderer.debug.checkShaderErrors = true;
       this.renderer.autoClear = false;
       this.renderer.setClearColor(new THREE.Color(0x000000), 0);
       this.renderer.setPixelRatio(this.pixelRatio);
@@ -376,7 +382,7 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
         gl_FragColor = vec4(newVel2, 0.0, 0.0);
     }
 }`;
-  const color_frag = `
+    const color_frag = `
     precision highp float;
     uniform sampler2D velocity;
     uniform sampler2D palette;
@@ -384,10 +390,10 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     varying vec2 uv;
     void main(){
     vec2 vel = texture2D(velocity, uv).xy;
-    float lenv = clamp(length(vel), 0.0, 1.0);
+    float lenv = clamp(length(vel) * 4.0, 0.12, 1.0);
     vec3 c = texture2D(palette, vec2(lenv, 0.5)).rgb;
     vec3 outRGB = mix(bgColor.rgb, c, lenv);
-    float outA = mix(bgColor.a, 1.0, lenv);
+    float outA = mix(bgColor.a, 0.92, lenv);
     gl_FragColor = vec4(outRGB, outA);
 }`;
   const divergence_frag = `
@@ -714,8 +720,19 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     }
   }
 
+  function getRenderTargetType(renderer) {
+    const gl = renderer.getContext();
+    const extFloat = gl.getExtension("EXT_color_buffer_float");
+    const extHalf = gl.getExtension("EXT_color_buffer_half_float");
+    const isWebGL2 = typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext;
+    if (isWebGL2 || extFloat) return THREE.FloatType;
+    if (extHalf) return THREE.HalfFloatType;
+    return THREE.UnsignedByteType;
+  }
+
   class Simulation {
-    constructor(simOptions) {
+    constructor(simOptions, renderer) {
+      this.renderer = renderer;
       this.options = {
         iterations_poisson: iterationsPoisson,
         iterations_viscous: iterationsViscous,
@@ -748,12 +765,8 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
       this.createAllFBO();
       this.createShaderPass();
     }
-    getFloatType() {
-      const isIOS = /(iPad|iPhone|iPod)/i.test(navigator.userAgent);
-      return isIOS ? THREE.HalfFloatType : THREE.FloatType;
-    }
     createAllFBO() {
-      const type = this.getFloatType();
+      const type = getRenderTargetType(this.renderer);
       const opts = {
         type,
         depthBuffer: false,
@@ -859,11 +872,12 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
   }
 
   class Output {
-    constructor() {
+    constructor(renderer) {
+      this.renderer = renderer;
       this.init();
     }
     init() {
-      this.simulation = new Simulation();
+      this.simulation = new Simulation({}, this.renderer);
       this.scene = new THREE.Scene();
       this.camera = new THREE.Camera();
       this.output = new THREE.Mesh(
@@ -930,7 +944,15 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     }
     init() {
       this.props.$wrapper.prepend(Common.renderer.domElement);
-      this.output = new Output();
+      this.output = new Output(Common.renderer);
+      this.failed = false;
+      try {
+        Common.resize();
+        if (Common.width < 2 || Common.height < 2) this.failed = true;
+        else this.render();
+      } catch (_err) {
+        this.failed = true;
+      }
     }
     resize() {
       Common.resize();
@@ -980,7 +1002,6 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     return { dispose() {}, start() {}, pause() {}, resize() {}, setColors() {}, updateOptions() {} };
   }
 
-  mountEl.style.position = mountEl.style.position || "relative";
   mountEl.style.overflow = mountEl.style.overflow || "hidden";
 
   try {
@@ -993,22 +1014,16 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
       autoResumeDelay,
       autoRampDuration
     });
+    if (webgl.failed) {
+      webgl.dispose();
+      return { dispose() {}, start() {}, pause() {}, resize() {}, setColors() {}, updateOptions() {}, failed: true };
+    }
     webgl.start();
   } catch (_err) {
     return { dispose() {}, start() {}, pause() {}, resize() {}, setColors() {}, updateOptions() {}, failed: true };
   }
 
-  intersectionObserver = new IntersectionObserver(
-    (entries) => {
-      const entry = entries[0];
-      isVisible = entry.isIntersecting && entry.intersectionRatio > 0;
-      if (!webgl) return;
-      if (isVisible && !document.hidden) webgl.start();
-      else webgl.pause();
-    },
-    { threshold: [0, 0.01, 0.1] }
-  );
-  intersectionObserver.observe(mountEl);
+  isVisible = true;
 
   resizeObserver = new ResizeObserver(() => {
     if (!webgl) return;

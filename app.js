@@ -94,11 +94,24 @@ function initLiquidBackground() {
   }
   liquidEtherFailed = false;
 
-  document.body.classList.toggle("liquid-bg-active", false);
+  document.body.classList.remove("liquid-bg-active", "liquid-bg-fallback");
   if (!mount) return;
 
-  if (!enabled || reducedMotion || typeof createLiquidEther !== "function") {
+  if (!enabled || reducedMotion) {
     mount.classList.add("hidden");
+    if (typeof window.initPageGradualBlur === "function") window.initPageGradualBlur({ enabled: false });
+    updateLiquidBackgroundHint(reducedMotion);
+    return;
+  }
+
+  if (typeof window.initPageGradualBlur === "function") {
+    window.initPageGradualBlur({ enabled: true, opacity: 0.75, strength: 2 });
+  }
+
+  if (typeof createLiquidEther !== "function" || typeof THREE === "undefined") {
+    mount.classList.add("hidden");
+    liquidEtherFailed = true;
+    document.body.classList.add("liquid-bg-fallback");
     updateLiquidBackgroundHint(reducedMotion);
     return;
   }
@@ -110,6 +123,7 @@ function initLiquidBackground() {
     liquidEtherInstance = null;
     liquidEtherFailed = true;
     mount.classList.add("hidden");
+    document.body.classList.add("liquid-bg-fallback");
     updateLiquidBackgroundHint(reducedMotion);
     return;
   }
@@ -125,7 +139,7 @@ function updateLiquidBackgroundHint(reducedMotion) {
     return;
   }
   if (liquidEtherFailed && state.userSettings?.liquidBackground) {
-    ui.liquidBackgroundHint.textContent = "Animated background could not start (WebGL unavailable in this browser).";
+    ui.liquidBackgroundHint.textContent = "WebGL fluid unavailable — using animated gradient + edge blur instead.";
     ui.liquidBackgroundHint.classList.remove("hidden");
     return;
   }
@@ -2154,6 +2168,9 @@ function setup() {
   ui.darkModeToggle?.addEventListener("change", () => setDarkMode(ui.darkModeToggle.checked));
   ui.liquidBackgroundToggle?.addEventListener("change", () => setLiquidBackground(ui.liquidBackgroundToggle.checked));
   initLiquidBackground();
+  if (!state.userSettings?.liquidBackground && typeof window.initPageGradualBlur === "function") {
+    window.initPageGradualBlur({ enabled: true, opacity: 0.55, strength: 1.6 });
+  }
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;
     renderHomeAndWorkout();
