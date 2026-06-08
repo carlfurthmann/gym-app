@@ -1628,36 +1628,42 @@ function computePlannedCardioMinutes(routine) {
 }
 
 function formatHomeCardioDisplay(date, routine) {
+  const monthlyMins = computeMonthlyCardioMinutes(date.getFullYear(), date.getMonth());
+  const monthLine = `${monthlyMins} min this month`;
   const entries = (routine.exercises || [])
     .map((ex, idx) => ({ ex, idx }))
     .filter(({ ex }) => isCardioExercise(ex));
   if (!entries.length) {
+    const todayHint = routine.exercises.length
+      ? "No cardio in today's workout — add it in Plan."
+      : "Rest day or no workout.";
     return {
-      main: "0 min",
-      detail: routine.exercises.length
-        ? "No cardio in today's workout — add it in Plan."
-        : "Rest day or no workout — add cardio in Plan when needed."
+      main: monthlyMins > 0 ? monthLine : "0 min today",
+      detail: `${todayHint} ${monthlyMins > 0 ? "" : "· "}Monthly total updates when you check off cardio on Workout.`
     };
   }
   const doneMins = computeCardioMinutesForDate(date, routine);
   const plannedMins = computePlannedCardioMinutes(routine);
-  const detail = entries.map(({ ex, idx }) => {
+  const todayParts = entries.map(({ ex, idx }) => {
     const mins = parseCardioMinutes(ex);
     const diff = formatCardioDifficulty(ex);
     const done = isExerciseCountedForDate(date, routine, idx);
     const diffText = diff ? ` · ${diff}` : "";
     return `${done ? "✓ " : ""}${ex.name} ${mins || "?"} min${diffText}`;
-  }).join(" · ");
+  });
   let main = "";
   if (doneMins > 0) {
-    main = `${doneMins} min done`;
+    main = `${doneMins} min today`;
     if (plannedMins > doneMins) main += ` / ${plannedMins} planned`;
   } else if (plannedMins > 0) {
-    main = `${plannedMins} min planned`;
+    main = `${plannedMins} min planned today`;
   } else {
-    main = `${entries.length} cardio lined up`;
+    main = `${entries.length} cardio lined up today`;
   }
-  return { main, detail };
+  return {
+    main,
+    detail: `${monthLine} · ${todayParts.join(" · ")}`
+  };
 }
 
 function syncAddExerciseFormLayout() {
@@ -1688,9 +1694,10 @@ function computeMonthlyCardioMinutes(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   let total = 0;
   for (let day = 1; day <= daysInMonth; day += 1) {
-    total += computeCardioMinutesForDate(new Date(year, month, day), getRoutineForDate(new Date(year, month, day)));
+    const date = new Date(year, month, day);
+    total += computeCardioMinutesForDate(date, getRoutineForDateWithHistory(date));
   }
-  return total;
+  return Math.round(total);
 }
 
 function getPreviousSessionForRoutine(todayRoutine) {
@@ -1906,7 +1913,7 @@ function renderHomeAndWorkout() {
   ui.dailyKgCounter.textContent = `Today's lifted total: ${kg} kg`;
   if (ui.dailyCardioCounter) {
     ui.dailyCardioCounter.textContent = cardioDisplay.main;
-    ui.dailyCardioCounter.classList.toggle("muted", cardioDisplay.main.includes("planned") || cardioDisplay.main === "0 min");
+    ui.dailyCardioCounter.classList.toggle("muted", cardioDisplay.main.includes("planned") || cardioDisplay.main.startsWith("0 min"));
   }
   if (ui.dailyCardioDetail) {
     ui.dailyCardioDetail.textContent = cardioDisplay.detail;
@@ -2495,7 +2502,7 @@ function renderCalendarAndStats() {
   let attended = 0;
   let workoutDays = 0;
   let monthlyKg = 0;
-  let monthlyCardio = 0;
+  const monthlyCardio = computeMonthlyCardioMinutes(year, month);
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = new Date(year, month, day);
     const key = formatDateKey(date);
@@ -2510,7 +2517,6 @@ function renderCalendarAndStats() {
     } else {
       workoutDays += 1;
       monthlyKg += computeTotalKgForDate(date, routine);
-      monthlyCardio += computeCardioMinutesForDate(date, routine);
       if (state.completedByDate[key] || (state.doneByDate[key] || []).length > 0) {
         attended += 1;
         cell.classList.add("done");
