@@ -90,7 +90,7 @@ body.liquid-bg-fallback::before {
 }
 
 :root:not(.dark) .liquid-ether-bg {
-  opacity: 0.48;
+  opacity: 1;
 }
 
 .liquid-ether-bg.hidden {

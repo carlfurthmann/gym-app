@@ -79,11 +79,21 @@ function notifyColorSchemeChanged() {
   window.dispatchEvent(new CustomEvent("colorscheme:changed"));
 }
 
+function isLightMode() {
+  return !document.documentElement.classList.contains("dark");
+}
+
+function getLiquidBackgroundColor() {
+  return isLightMode() ? [1, 1, 1, 0] : [0, 0, 0, 0];
+}
+
 function getLiquidEtherOptions() {
   const mobile = isMobileDevice();
   return {
     colors: getThemeLiquidColors(),
     getColors: getThemeLiquidColors,
+    backgroundColor: getLiquidBackgroundColor(),
+    getBackgroundColor: getLiquidBackgroundColor,
     resolution: mobile ? 0.28 : 0.5,
     iterationsPoisson: mobile ? 12 : 32,
     iterationsViscous: mobile ? 12 : 32,

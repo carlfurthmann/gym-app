@@ -22,7 +22,9 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     takeoverDuration = 0.25,
     autoResumeDelay = 1000,
     autoRampDuration = 0.6,
-    getColors = null
+    getColors = null,
+    backgroundColor = null,
+    getBackgroundColor = null
   } = options;
 
   let paletteTex = null;
@@ -61,6 +63,22 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
 
   paletteTex = makePaletteTexture(colors);
   const bgVec4 = new THREE.Vector4(0, 0, 0, 0);
+  if (Array.isArray(backgroundColor) && backgroundColor.length >= 3) {
+    bgVec4.set(
+      backgroundColor[0],
+      backgroundColor[1],
+      backgroundColor[2],
+      backgroundColor[3] ?? 0
+    );
+  }
+
+  function applyBackgroundColor(next) {
+    if (!Array.isArray(next) || next.length < 3) return;
+    bgVec4.set(next[0], next[1], next[2], next[3] ?? 0);
+    if (webgl?.output?.output?.material?.uniforms?.bgColor) {
+      webgl.output.output.material.uniforms.bgColor.value = bgVec4;
+    }
+  }
 
   function refreshPalette() {
     const stops = typeof getColors === "function" ? getColors() : colors;
@@ -70,6 +88,7 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     if (webgl?.output?.output?.material?.uniforms?.palette) {
       webgl.output.output.material.uniforms.palette.value = paletteTex;
     }
+    if (typeof getBackgroundColor === "function") applyBackgroundColor(getBackgroundColor());
   }
 
   class CommonClass {
