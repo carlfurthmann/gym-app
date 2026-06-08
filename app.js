@@ -1895,11 +1895,16 @@ function renderHomeAndWorkout() {
     : "Rest day — recover and come back stronger.";
   ui.homeTodayCount.textContent = `Exercises: ${todayRoutine.exercises.length}`;
   const kg = computeTotalKgForDate(today, todayRoutine);
-  const cardio = computeCardioMinutesForDate(today, todayRoutine);
+  const cardioDisplay = formatHomeCardioDisplay(today, todayRoutine);
   ui.dailyKgCounter.textContent = `Today's lifted total: ${kg} kg`;
+  if (ui.dailyCardioTile) ui.dailyCardioTile.classList.toggle("hidden", cardioDisplay.hidden);
   if (ui.dailyCardioCounter) {
-    ui.dailyCardioCounter.textContent = cardio > 0 ? `Cardio today: ${cardio} min` : "";
-    ui.dailyCardioCounter.classList.toggle("hidden", cardio <= 0);
+    ui.dailyCardioCounter.textContent = cardioDisplay.main;
+    ui.dailyCardioCounter.classList.toggle("muted", cardioDisplay.main.includes("planned"));
+  }
+  if (ui.dailyCardioDetail) {
+    ui.dailyCardioDetail.textContent = cardioDisplay.detail;
+    ui.dailyCardioDetail.classList.toggle("hidden", !cardioDisplay.detail);
   }
 
   ui.routineTitle.textContent = `${todayName} Routine`;
