@@ -1631,7 +1631,14 @@ function formatHomeCardioDisplay(date, routine) {
   const entries = (routine.exercises || [])
     .map((ex, idx) => ({ ex, idx }))
     .filter(({ ex }) => isCardioExercise(ex));
-  if (!entries.length) return { hidden: true, main: "", detail: "" };
+  if (!entries.length) {
+    return {
+      main: "0 min",
+      detail: routine.exercises.length
+        ? "No cardio in today's workout — add it in Plan."
+        : "Rest day or no workout — add cardio in Plan when needed."
+    };
+  }
   const doneMins = computeCardioMinutesForDate(date, routine);
   const plannedMins = computePlannedCardioMinutes(routine);
   const detail = entries.map(({ ex, idx }) => {
@@ -1648,9 +1655,9 @@ function formatHomeCardioDisplay(date, routine) {
   } else if (plannedMins > 0) {
     main = `${plannedMins} min planned`;
   } else {
-    main = `${entries.length} cardio exercise${entries.length === 1 ? "" : "s"}`;
+    main = `${entries.length} cardio lined up`;
   }
-  return { hidden: false, main, detail };
+  return { main, detail };
 }
 
 function syncAddExerciseFormLayout() {
@@ -1897,14 +1904,13 @@ function renderHomeAndWorkout() {
   const kg = computeTotalKgForDate(today, todayRoutine);
   const cardioDisplay = formatHomeCardioDisplay(today, todayRoutine);
   ui.dailyKgCounter.textContent = `Today's lifted total: ${kg} kg`;
-  if (ui.dailyCardioTile) ui.dailyCardioTile.classList.toggle("hidden", cardioDisplay.hidden);
   if (ui.dailyCardioCounter) {
     ui.dailyCardioCounter.textContent = cardioDisplay.main;
-    ui.dailyCardioCounter.classList.toggle("muted", cardioDisplay.main.includes("planned"));
+    ui.dailyCardioCounter.classList.toggle("muted", cardioDisplay.main.includes("planned") || cardioDisplay.main === "0 min");
   }
   if (ui.dailyCardioDetail) {
     ui.dailyCardioDetail.textContent = cardioDisplay.detail;
-    ui.dailyCardioDetail.classList.toggle("hidden", !cardioDisplay.detail);
+    ui.dailyCardioDetail.classList.remove("hidden");
   }
 
   ui.routineTitle.textContent = `${todayName} Routine`;
