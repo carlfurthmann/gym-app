@@ -78,14 +78,18 @@ function getLiquidEtherOptions() {
   const light = isLightMode();
   return {
     colors: getThemeLiquidColors(),
-    resolution: mobile ? 0.28 : 0.45,
-    iterationsPoisson: mobile ? 10 : 24,
-    iterationsViscous: mobile ? 10 : 24,
-    mouseForce: mobile ? 10 : light ? 14 : 15,
-    cursorSize: mobile ? 72 : light ? 88 : 95,
+    resolution: mobile ? 0.26 : light ? 0.38 : 0.42,
+    iterationsPoisson: mobile ? 10 : 20,
+    iterationsViscous: mobile ? 10 : 20,
+    mouseForce: mobile ? 8 : light ? 5 : 11,
+    cursorSize: mobile ? 56 : light ? 38 : 72,
     autoDemo: true,
-    autoSpeed: light ? 0.26 : 0.32,
-    autoIntensity: light ? 1.0 : 1.3
+    autoSpeed: light ? 0.2 : 0.28,
+    autoIntensity: light ? 0.5 : 1.0,
+    backgroundColor: light ? [1, 1, 1, 0] : [0, 0, 0, 0],
+    fluidGain: light ? 1.6 : 2.6,
+    fluidMix: light ? 0.32 : 0.5,
+    maxDisplay: light ? 0.45 : 0.75
   };
 }
 
@@ -159,6 +163,111 @@ function setLiquidBackground(enabled) {
   saveState();
   initLiquidBackground();
   if (ui.liquidBackgroundToggle) ui.liquidBackgroundToggle.checked = enabled;
+}
+
+function notificationsSupported() {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
+function getCreatineReminderSettings() {
+  state.userSettings = state.userSettings || {};
+  state.userSettings.reminders = state.userSettings.reminders || {};
+  state.userSettings.reminders.creatine = state.userSettings.reminders.creatine || {
+    enabled: false,
+    time: "09:00",
+    lastNotifiedDate: ""
+  };
+  return state.userSettings.reminders.creatine;
+}
+
+function showAppNotification(title, body, tag) {
+  if (!notificationsSupported() || Notification.permission !== "granted") return false;
+  try {
+    new Notification(title, { body, tag: tag || "bbl-reminder" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function updateNotificationUI() {
+  const supported = notificationsSupported();
+  const perm = supported ? Notification.permission : "unsupported";
+  if (ui.notificationPermissionHint) {
+    if (!supported) {
+      ui.notificationPermissionHint.textContent = "Notifications are not supported in this browser.";
+    } else if (perm === "granted") {
+      ui.notificationPermissionHint.textContent = "Notifications allowed — reminders fire while this device has the app open around your chosen time.";
+    } else if (perm === "denied") {
+      ui.notificationPermissionHint.textContent = "Notifications blocked. Enable them in your browser or phone settings for BBL.";
+    } else {
+      ui.notificationPermissionHint.textContent = "Tap Allow notifications, then turn on creatine reminder. Works best with the app open or in a background tab.";
+    }
+  }
+  if (ui.enableNotificationsBtn) {
+    ui.enableNotificationsBtn.classList.toggle("hidden", !supported || perm === "granted");
+    ui.enableNotificationsBtn.textContent = perm === "denied" ? "Notifications blocked" : "Allow notifications";
+    ui.enableNotificationsBtn.disabled = perm === "denied";
+  }
+  const reminder = getCreatineReminderSettings();
+  if (ui.creatineReminderToggle && document.activeElement !== ui.creatineReminderToggle) {
+    ui.creatineReminderToggle.checked = Boolean(reminder.enabled);
+  }
+  if (ui.creatineReminderTime && document.activeElement !== ui.creatineReminderTime) {
+    ui.creatineReminderTime.value = reminder.time || "09:00";
+  }
+  if (ui.testNotificationBtn) {
+    ui.testNotificationBtn.classList.toggle("hidden", perm !== "granted");
+  }
+}
+
+async function requestNotificationPermission() {
+  if (!notificationsSupported()) {
+    alert("This browser does not support notifications.");
+    return "unsupported";
+  }
+  if (Notification.permission === "granted") {
+    updateNotificationUI();
+    return "granted";
+  }
+  if (Notification.permission === "denied") {
+    updateNotificationUI();
+    return "denied";
+  }
+  const result = await Notification.requestPermission();
+  updateNotificationUI();
+  return result;
+}
+
+function saveCreatineReminderSettings() {
+  const reminder = getCreatineReminderSettings();
+  reminder.enabled = Boolean(ui.creatineReminderToggle?.checked);
+  reminder.time = ui.creatineReminderTime?.value || "09:00";
+  saveState();
+  updateNotificationUI();
+}
+
+function checkReminders() {
+  if (!notificationsSupported() || Notification.permission !== "granted") return;
+  const reminder = getCreatineReminderSettings();
+  if (!reminder.enabled) return;
+  const today = dateKey();
+  if (reminder.lastNotifiedDate === today) return;
+  const [hh, mm] = (reminder.time || "09:00").split(":").map((n) => parseInt(n, 10));
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+  const now = new Date();
+  const due = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  if (now < due) return;
+  if (showAppNotification("BBL — Creatine time", "Time for your daily creatine.", "bbl-creatine")) {
+    reminder.lastNotifiedDate = today;
+    saveState(true);
+  }
+}
+
+function startReminderChecks() {
+  checkReminders();
+  if (reminderCheckInterval) clearInterval(reminderCheckInterval);
+  reminderCheckInterval = setInterval(checkReminders, 60 * 1000);
 }
 
 const ui = {
@@ -268,12 +377,18 @@ const ui = {
   darkModeToggle: document.getElementById("darkModeToggle"),
   liquidBackgroundToggle: document.getElementById("liquidBackgroundToggle"),
   liquidBackgroundHint: document.getElementById("liquidBackgroundHint"),
-  themeSwatches: document.getElementById("themeSwatches")
+  themeSwatches: document.getElementById("themeSwatches"),
+  notificationPermissionHint: document.getElementById("notificationPermissionHint"),
+  enableNotificationsBtn: document.getElementById("enableNotificationsBtn"),
+  creatineReminderToggle: document.getElementById("creatineReminderToggle"),
+  creatineReminderTime: document.getElementById("creatineReminderTime"),
+  testNotificationBtn: document.getElementById("testNotificationBtn")
 };
 let upcomingPreviewVisible = false;
 let showPrsOnly = false;
 let planExercisesExpanded = false;
 let selectedExerciseHistoryName = null;
+let reminderCheckInterval = null;
 let exercisesExpanded = false;
 let restTimerInterval = null;
 let restTimerEndsAt = 0;
@@ -453,10 +568,18 @@ function migrateState(parsed) {
     age: s.userProfile?.age || ""
   };
   const defaultLiquidBg = !isMobileDevice();
+  const creatineReminder = s.userSettings?.reminders?.creatine || {};
   s.userSettings = {
     colorTheme: THEME_OPTIONS.some((t) => t.id === s.userSettings?.colorTheme) ? s.userSettings.colorTheme : "purple",
     darkMode: s.userSettings?.darkMode !== undefined ? Boolean(s.userSettings.darkMode) : true,
-    liquidBackground: s.userSettings?.liquidBackground !== undefined ? Boolean(s.userSettings.liquidBackground) : defaultLiquidBg
+    liquidBackground: s.userSettings?.liquidBackground !== undefined ? Boolean(s.userSettings.liquidBackground) : defaultLiquidBg,
+    reminders: {
+      creatine: {
+        enabled: Boolean(creatineReminder.enabled),
+        time: /^\d{2}:\d{2}$/.test(creatineReminder.time) ? creatineReminder.time : "09:00",
+        lastNotifiedDate: creatineReminder.lastNotifiedDate || ""
+      }
+    }
   };
   s.workoutLibrary.forEach((w) => w.exercises.forEach(normalizeExercise));
   Object.keys(s.dailyWorkoutOverrides || {}).forEach((key) => {
@@ -586,6 +709,7 @@ function renderProfilePage() {
     ui.profileSummaryLine.textContent = parts.length ? parts.join(" · ") : "Add your stats below";
   }
   renderThemeSwatches();
+  updateNotificationUI();
 }
 
 function updateProfileAuthLine(session) {
@@ -2541,6 +2665,26 @@ function setup() {
   ui.darkModeToggle?.addEventListener("change", () => setDarkMode(ui.darkModeToggle.checked));
   ui.liquidBackgroundToggle?.addEventListener("change", () => setLiquidBackground(ui.liquidBackgroundToggle.checked));
   initLiquidBackground();
+  startReminderChecks();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkReminders();
+  });
+  ui.enableNotificationsBtn?.addEventListener("click", () => requestNotificationPermission());
+  ui.creatineReminderToggle?.addEventListener("change", async () => {
+    if (ui.creatineReminderToggle.checked && Notification.permission !== "granted") {
+      const perm = await requestNotificationPermission();
+      if (perm !== "granted") {
+        ui.creatineReminderToggle.checked = false;
+      }
+    }
+    saveCreatineReminderSettings();
+  });
+  ui.creatineReminderTime?.addEventListener("change", saveCreatineReminderSettings);
+  ui.testNotificationBtn?.addEventListener("click", () => {
+    if (!showAppNotification("BBL test", "Notifications are working.", "bbl-test")) {
+      alert("Allow notifications first.");
+    }
+  });
   ui.showPrsOnlyBtn?.addEventListener("click", () => {
     showPrsOnly = !showPrsOnly;
     renderHomeAndWorkout();

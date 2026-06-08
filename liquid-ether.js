@@ -21,7 +21,11 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     autoIntensity = 2.2,
     takeoverDuration = 0.25,
     autoResumeDelay = 1000,
-    autoRampDuration = 0.6
+    autoRampDuration = 0.6,
+    backgroundColor = null,
+    fluidGain = 3.2,
+    fluidMix = 0.58,
+    maxDisplay = 0.9
   } = options;
 
   let paletteTex = null;
@@ -60,6 +64,14 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
 
   paletteTex = makePaletteTexture(colors);
   const bgVec4 = new THREE.Vector4(0, 0, 0, 0);
+  if (Array.isArray(backgroundColor) && backgroundColor.length >= 3) {
+    bgVec4.set(
+      backgroundColor[0],
+      backgroundColor[1],
+      backgroundColor[2],
+      backgroundColor[3] ?? 0
+    );
+  }
 
   class CommonClass {
     constructor() {
@@ -397,15 +409,18 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     uniform sampler2D velocity;
     uniform sampler2D palette;
     uniform vec4 bgColor;
+    uniform float fluidGain;
+    uniform float fluidMix;
+    uniform float maxDisplay;
     varying vec2 uv;
     void main(){
     vec2 vel = texture2D(velocity, uv).xy;
-    float raw = length(vel) * 3.2;
-    float lenv = clamp(raw, 0.02, 0.9);
-    float display = pow(lenv, 1.4);
-    vec3 c = texture2D(palette, vec2(display * 0.72, 0.5)).rgb;
-    vec3 outRGB = mix(bgColor.rgb, c, display * 0.58);
-    float outA = mix(bgColor.a, 0.44, display);
+    float raw = length(vel) * fluidGain;
+    float lenv = clamp(raw, 0.02, maxDisplay);
+    float display = pow(lenv, 1.5);
+    vec3 c = texture2D(palette, vec2(display * 0.68, 0.5)).rgb;
+    vec3 outRGB = mix(bgColor.rgb, c, display * fluidMix);
+    float outA = mix(bgColor.a, 0.36, display);
     gl_FragColor = vec4(outRGB, outA);
 }`;
   const divergence_frag = `
@@ -903,7 +918,10 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
             velocity: { value: this.simulation.fbos.vel_0.texture },
             boundarySpace: { value: new THREE.Vector2() },
             palette: { value: paletteTex },
-            bgColor: { value: bgVec4 }
+            bgColor: { value: bgVec4 },
+            fluidGain: { value: fluidGain },
+            fluidMix: { value: fluidMix },
+            maxDisplay: { value: maxDisplay }
           }
         })
       );

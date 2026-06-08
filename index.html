@@ -333,6 +333,18 @@
               <p class="muted">Colour theme</p>
               <div id="themeSwatches" class="theme-grid"></div>
             </div>
+            <div class="content-section">
+              <h3>Reminders</h3>
+              <p id="notificationPermissionHint" class="muted">Browser notifications for daily habits.</p>
+              <button id="enableNotificationsBtn" class="btn ghost" type="button">Allow notifications</button>
+              <label class="toggle-row">
+                <span>Daily creatine reminder</span>
+                <input id="creatineReminderToggle" type="checkbox" />
+              </label>
+              <label for="creatineReminderTime">Reminder time</label>
+              <input id="creatineReminderTime" type="time" value="09:00" />
+              <button id="testNotificationBtn" class="btn ghost" type="button">Send test notification</button>
+            </div>
             <div class="content-section" id="syncCard">
               <h3>Account &amp; sync</h3>
               <p id="syncStatus" class="muted">Not connected</p>
