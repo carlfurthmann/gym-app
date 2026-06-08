@@ -86,11 +86,11 @@ body.liquid-bg-fallback::before {
   height: 100%;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.46;
+  opacity: 0.55;
 }
 
 :root:not(.dark) .liquid-ether-bg {
-  opacity: 0.36;
+  opacity: 0.48;
 }
 
 .liquid-ether-bg.hidden {

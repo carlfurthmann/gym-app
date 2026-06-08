@@ -22,10 +22,7 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     takeoverDuration = 0.25,
     autoResumeDelay = 1000,
     autoRampDuration = 0.6,
-    backgroundColor = null,
-    fluidGain = 3.2,
-    fluidMix = 0.58,
-    maxDisplay = 0.9
+    getColors = null
   } = options;
 
   let paletteTex = null;
@@ -64,13 +61,15 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
 
   paletteTex = makePaletteTexture(colors);
   const bgVec4 = new THREE.Vector4(0, 0, 0, 0);
-  if (Array.isArray(backgroundColor) && backgroundColor.length >= 3) {
-    bgVec4.set(
-      backgroundColor[0],
-      backgroundColor[1],
-      backgroundColor[2],
-      backgroundColor[3] ?? 0
-    );
+
+  function refreshPalette() {
+    const stops = typeof getColors === "function" ? getColors() : colors;
+    const next = makePaletteTexture(stops);
+    if (paletteTex) paletteTex.dispose();
+    paletteTex = next;
+    if (webgl?.output?.output?.material?.uniforms?.palette) {
+      webgl.output.output.material.uniforms.palette.value = paletteTex;
+    }
   }
 
   class CommonClass {
@@ -90,7 +89,7 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
       this.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       this.resize();
       this.renderer = new THREE.WebGLRenderer({
-        antialias: false,
+        antialias: true,
         alpha: true,
         powerPreference: "high-performance",
         preserveDrawingBuffer: true
@@ -409,19 +408,12 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     uniform sampler2D velocity;
     uniform sampler2D palette;
     uniform vec4 bgColor;
-    uniform float fluidGain;
-    uniform float fluidMix;
-    uniform float maxDisplay;
     varying vec2 uv;
     void main(){
     vec2 vel = texture2D(velocity, uv).xy;
-    float raw = length(vel) * fluidGain;
-    float lenv = clamp(raw, 0.02, maxDisplay);
-    float display = pow(lenv, 1.5);
-    vec3 c = texture2D(palette, vec2(display * 0.68, 0.5)).rgb;
-    vec3 outRGB = mix(bgColor.rgb, c, display * fluidMix);
-    float outA = mix(bgColor.a, 0.36, display);
-    gl_FragColor = vec4(outRGB, outA);
+    float lenv = clamp(length(vel), 0.0, 1.0);
+    vec3 c = texture2D(palette, vec2(lenv, 0.5)).rgb;
+    gl_FragColor = vec4(mix(bgColor.rgb, c, lenv), mix(bgColor.a, 1.0, lenv));
 }`;
   const divergence_frag = `
     precision highp float;
@@ -918,10 +910,7 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
             velocity: { value: this.simulation.fbos.vel_0.texture },
             boundarySpace: { value: new THREE.Vector2() },
             palette: { value: paletteTex },
-            bgColor: { value: bgVec4 },
-            fluidGain: { value: fluidGain },
-            fluidMix: { value: fluidMix },
-            maxDisplay: { value: maxDisplay }
+            bgColor: { value: bgVec4 }
           }
         })
       );
@@ -1085,7 +1074,11 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
     isBounce
   });
 
+  const onColorschemeChanged = () => refreshPalette();
+  window.addEventListener("colorscheme:changed", onColorschemeChanged);
+
   function dispose() {
+    window.removeEventListener("colorscheme:changed", onColorschemeChanged);
     if (rafId) cancelAnimationFrame(rafId);
     if (resizeRafId) cancelAnimationFrame(resizeRafId);
     try {
@@ -1116,6 +1109,7 @@ window.createLiquidEther = function createLiquidEther(mountEl, options = {}) {
         webgl.output.output.material.uniforms.palette.value = paletteTex;
       }
     },
+    refreshPalette,
     updateOptions(opts) {
       if (!webgl) return;
       const simOpts = {};

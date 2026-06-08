@@ -62,42 +62,44 @@ let liquidEtherInstance = null;
 let liquidEtherFailed = false;
 let authSession = null;
 
-const LIQUID_THEME_COLORS = {
-  orange: ["#F97316", "#FB923C", "#FDBA74"],
-  blue: ["#3B82F6", "#60A5FA", "#93C5FD"],
-  red: ["#EF4444", "#F87171", "#FCA5A5"],
-  purple: ["#A78BFA", "#8B5CF6", "#C4B5FD"],
-  green: ["#22C55E", "#4ADE80", "#86EFAC"],
-  mustard: ["#EAB308", "#FACC15", "#FDE047"],
-  pink: ["#F472B6", "#EC4899", "#F9A8D4"]
-};
-
-function isLightMode() {
-  return !document.documentElement.classList.contains("dark");
+function cssThemeVar(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
 }
 
 function getThemeLiquidColors() {
-  const theme = state.userSettings?.colorTheme || "purple";
-  return LIQUID_THEME_COLORS[theme] || LIQUID_THEME_COLORS.purple;
+  return [
+    cssThemeVar("--gym-primary", "#7C3AED"),
+    cssThemeVar("--gym-secondary", "#6D28D9"),
+    "#ffffff"
+  ];
+}
+
+function notifyColorSchemeChanged() {
+  window.dispatchEvent(new CustomEvent("colorscheme:changed"));
 }
 
 function getLiquidEtherOptions() {
   const mobile = isMobileDevice();
-  const light = isLightMode();
   return {
     colors: getThemeLiquidColors(),
-    resolution: mobile ? 0.26 : light ? 0.4 : 0.42,
-    iterationsPoisson: mobile ? 10 : 22,
-    iterationsViscous: mobile ? 10 : 22,
-    mouseForce: mobile ? 8 : light ? 7 : 11,
-    cursorSize: mobile ? 56 : light ? 50 : 72,
+    getColors: getThemeLiquidColors,
+    resolution: mobile ? 0.28 : 0.5,
+    iterationsPoisson: mobile ? 12 : 32,
+    iterationsViscous: mobile ? 12 : 32,
+    mouseForce: mobile ? 12 : 20,
+    cursorSize: mobile ? 72 : 100,
+    isViscous: false,
+    viscous: 30,
+    dt: 0.014,
+    BFECC: true,
+    isBounce: false,
     autoDemo: true,
-    autoSpeed: light ? 0.24 : 0.28,
-    autoIntensity: light ? 0.85 : 1.0,
-    backgroundColor: [0, 0, 0, 0],
-    fluidGain: light ? 2.3 : 2.6,
-    fluidMix: light ? 0.46 : 0.5,
-    maxDisplay: light ? 0.58 : 0.75
+    autoSpeed: 0.5,
+    autoIntensity: mobile ? 1.6 : 2.2,
+    takeoverDuration: 0.25,
+    autoResumeDelay: 1000,
+    autoRampDuration: 0.6
   };
 }
 
@@ -666,6 +668,7 @@ function applyUserTheme() {
   root.classList.toggle("dark", Boolean(settings.darkMode));
   if (theme === "orange") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", theme);
+  notifyColorSchemeChanged();
 }
 
 function setColorTheme(themeId) {
@@ -674,8 +677,7 @@ function setColorTheme(themeId) {
   applyUserTheme();
   saveState();
   renderThemeSwatches();
-  if (liquidEtherInstance) liquidEtherInstance.setColors(getThemeLiquidColors());
-  if (state.userSettings?.liquidBackground) initLiquidBackground();
+  liquidEtherInstance?.setColors(getThemeLiquidColors());
 }
 
 function setDarkMode(enabled) {
@@ -684,7 +686,7 @@ function setDarkMode(enabled) {
   applyUserTheme();
   saveState();
   if (ui.darkModeToggle) ui.darkModeToggle.checked = enabled;
-  if (state.userSettings?.liquidBackground) initLiquidBackground();
+  liquidEtherInstance?.setColors(getThemeLiquidColors());
 }
 
 function saveUserProfile() {
