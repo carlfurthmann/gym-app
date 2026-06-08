@@ -2,6 +2,14 @@ const STORAGE_KEY = "gym_split_tracker_v1";
 const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DEFAULT_REST_DAY = "Friday";
 const CREATE_WORKOUT_VALUE = "__create_new__";
+const CARDIO_PRESETS = [
+  { id: "stairmaster", label: "Stairmaster" },
+  { id: "cycling", label: "Cycling" },
+  { id: "treadmill", label: "Treadmill" },
+  { id: "rowing", label: "Rowing" },
+  { id: "elliptical", label: "Elliptical" },
+  { id: "custom", label: "Other cardio" }
+];
 const SCHEDULE_ROTATE = "rotate";
 const SCHEDULE_REST = "rest";
 const WANDA_PREFAB_IDS = new Set(["wanda_legs_glutes_v1"]);
@@ -335,6 +343,15 @@ const ui = {
   syncUserEmail: document.getElementById("syncUserEmail"),
   offlineIndicator: document.getElementById("offlineIndicator"),
   dailyCardioCounter: document.getElementById("dailyCardioCounter"),
+  dailyCardioDetail: document.getElementById("dailyCardioDetail"),
+  dailyCardioTile: document.getElementById("dailyCardioTile"),
+  cardioPresetSelect: document.getElementById("cardioPresetSelect"),
+  cardioMinutesInput: document.getElementById("cardioMinutesInput"),
+  cardioDifficultyInput: document.getElementById("cardioDifficultyInput"),
+  weightsFieldsRow: document.getElementById("weightsFieldsRow"),
+  cardioFieldsRow: document.getElementById("cardioFieldsRow"),
+  cardioPresetRow: document.getElementById("cardioPresetRow"),
+  exerciseNameField: document.getElementById("exerciseNameField"),
   weeklyStreakCounter: document.getElementById("weeklyStreakCounter"),
   weeklyVolumeCounter: document.getElementById("weeklyVolumeCounter"),
   weeklyVolumeCompare: document.getElementById("weeklyVolumeCompare"),
@@ -414,7 +431,7 @@ function isCardioExercise(exercise) {
   if (!exercise) return false;
   if (exercise.kind === "cardio") return true;
   const name = (exercise.name || "").toLowerCase();
-  if (/stairmaster|treadmill|elliptical|rowing|bike|cardio|walk/.test(name)) return true;
+  if (/stairmaster|treadmill|elliptical|rowing|bike|cycling|cycle|cardio|walk/.test(name)) return true;
   return /\bmin\b/i.test(String(exercise.reps || ""));
 }
 
@@ -444,11 +461,17 @@ function parseCardioMinutes(exercise) {
   return parseFirstNumber(exercise.weight);
 }
 
+function formatCardioDifficulty(exercise) {
+  const raw = String(exercise.weight || "").trim();
+  return raw || "";
+}
+
 function formatExerciseInfo(exercise) {
   if (isCardioExercise(exercise)) {
     const mins = parseCardioMinutes(exercise);
-    const level = exercise.weight ? ` · level ${exercise.weight}` : "";
-    return mins ? `${mins} min${level}` : "Duration not set";
+    const diff = formatCardioDifficulty(exercise);
+    const diffText = diff ? ` · difficulty ${diff}` : "";
+    return mins ? `${mins} min${diffText}` : "Time not set";
   }
   const weight = exercise.weight ? `${exercise.weight} kg` : "Weight not set";
   const reps = exercise.reps ? `${exercise.reps} reps` : "Reps not set";
@@ -1595,6 +1618,65 @@ function computeCardioMinutesForDate(date, routine) {
   return Math.round(total);
 }
 
+function computePlannedCardioMinutes(routine) {
+  let total = 0;
+  (routine.exercises || []).forEach((exercise) => {
+    if (!isCardioExercise(exercise)) return;
+    total += parseCardioMinutes(exercise);
+  });
+  return Math.round(total);
+}
+
+function formatHomeCardioDisplay(date, routine) {
+  const entries = (routine.exercises || [])
+    .map((ex, idx) => ({ ex, idx }))
+    .filter(({ ex }) => isCardioExercise(ex));
+  if (!entries.length) return { hidden: true, main: "", detail: "" };
+  const doneMins = computeCardioMinutesForDate(date, routine);
+  const plannedMins = computePlannedCardioMinutes(routine);
+  const detail = entries.map(({ ex, idx }) => {
+    const mins = parseCardioMinutes(ex);
+    const diff = formatCardioDifficulty(ex);
+    const done = isExerciseCountedForDate(date, routine, idx);
+    const diffText = diff ? ` · ${diff}` : "";
+    return `${done ? "✓ " : ""}${ex.name} ${mins || "?"} min${diffText}`;
+  }).join(" · ");
+  let main = "";
+  if (doneMins > 0) {
+    main = `${doneMins} min done`;
+    if (plannedMins > doneMins) main += ` / ${plannedMins} planned`;
+  } else if (plannedMins > 0) {
+    main = `${plannedMins} min planned`;
+  } else {
+    main = `${entries.length} cardio exercise${entries.length === 1 ? "" : "s"}`;
+  }
+  return { hidden: false, main, detail };
+}
+
+function syncAddExerciseFormLayout() {
+  const isCardio = ui.exerciseKindInput?.value === "cardio";
+  ui.weightsFieldsRow?.classList.toggle("hidden", isCardio);
+  ui.cardioFieldsRow?.classList.toggle("hidden", !isCardio);
+  ui.cardioPresetRow?.classList.toggle("hidden", !isCardio);
+  if (!isCardio) {
+    ui.exerciseNameField?.classList.remove("hidden");
+    if (ui.exerciseNameInput) {
+      ui.exerciseNameInput.placeholder = "e.g. Incline Dumbbell Press";
+      ui.exerciseNameInput.required = true;
+    }
+    return;
+  }
+  const presetId = ui.cardioPresetSelect?.value || "stairmaster";
+  const preset = CARDIO_PRESETS.find((p) => p.id === presetId);
+  const isCustom = presetId === "custom";
+  ui.exerciseNameField?.classList.toggle("hidden", !isCustom);
+  if (ui.exerciseNameInput) {
+    ui.exerciseNameInput.required = isCustom;
+    ui.exerciseNameInput.placeholder = isCustom ? "e.g. Assault bike" : "";
+    if (!isCustom && preset) ui.exerciseNameInput.value = preset.label;
+  }
+}
+
 function computeMonthlyCardioMinutes(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   let total = 0;
@@ -1888,6 +1970,12 @@ function renderHomeAndWorkout() {
     if (exercise.note) {
       noteEl.textContent = exercise.note;
       noteEl.classList.remove("hidden");
+    }
+    if (isCardioExercise(exercise)) {
+      node.querySelector(".one-rm-row")?.classList.add("hidden");
+      node.querySelector(".timer-row")?.classList.add("hidden");
+      node.querySelector(".exercise-best")?.classList.add("hidden");
+      node.querySelector(".exercise-one-rm-record")?.classList.add("hidden");
     }
     if (isPr) {
       node.classList.add("is-pr");
@@ -2259,54 +2347,60 @@ function buildEditorItem(workoutId, exercise, index) {
 
   const isCardio = () => kindSelect.value === "cardio";
 
-  const warmLabel = document.createElement("p");
-  warmLabel.className = "editor-section-label";
-  warmLabel.textContent = "Warm-up (optional)";
-  node.appendChild(warmLabel);
-  const warmGrid = document.createElement("div");
-  warmGrid.className = "editor-row-2";
-  [["warmupWeight", "Weight", exercise.warmupWeight], ["warmupReps", "Reps", exercise.warmupReps], ["warmupSets", "Sets", exercise.warmupSets]].forEach(([field, label, val]) => {
-    const lab = document.createElement("label");
-    lab.textContent = label;
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = val || "";
-    bindEditorInput(input, workoutId, index, field);
-    lab.appendChild(input);
-    warmGrid.appendChild(lab);
-  });
-  node.appendChild(warmGrid);
+  if (!isCardio()) {
+    const warmLabel = document.createElement("p");
+    warmLabel.className = "editor-section-label";
+    warmLabel.textContent = "Warm-up (optional)";
+    node.appendChild(warmLabel);
+    const warmGrid = document.createElement("div");
+    warmGrid.className = "editor-row-2";
+    [["warmupWeight", "Weight", exercise.warmupWeight], ["warmupReps", "Reps", exercise.warmupReps], ["warmupSets", "Sets", exercise.warmupSets]].forEach(([field, label, val]) => {
+      const lab = document.createElement("label");
+      lab.textContent = label;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = val || "";
+      bindEditorInput(input, workoutId, index, field);
+      lab.appendChild(input);
+      warmGrid.appendChild(lab);
+    });
+    node.appendChild(warmGrid);
+  }
 
   const workLabel = document.createElement("p");
   workLabel.className = "editor-section-label";
-  workLabel.textContent = "Working set";
+  workLabel.textContent = isCardio() ? "Cardio session" : "Working set";
   node.appendChild(workLabel);
   const workGrid = document.createElement("div");
-  workGrid.className = "editor-row-2";
+  workGrid.className = isCardio() ? "editor-row-2 editor-row-cardio" : "editor-row-2";
   const weightLab = document.createElement("label");
-  weightLab.textContent = isCardio() ? "Level (optional)" : "Weight (kg)";
+  weightLab.textContent = isCardio() ? "Difficulty / level" : "Weight (kg)";
   const weightInput = document.createElement("input");
   weightInput.type = "text";
   weightInput.value = exercise.weight;
+  weightInput.placeholder = isCardio() ? "e.g. 8 or medium" : "";
   bindEditorInput(weightInput, workoutId, index, "weight");
   weightLab.appendChild(weightInput);
   const repsLab = document.createElement("label");
-  repsLab.textContent = isCardio() ? "Minutes" : "Reps";
+  repsLab.textContent = isCardio() ? "Time (minutes)" : "Reps";
   const repsInput = document.createElement("input");
   repsInput.type = "text";
+  repsInput.inputMode = isCardio() ? "numeric" : "text";
   repsInput.value = exercise.reps;
   bindEditorInput(repsInput, workoutId, index, "reps");
   repsLab.appendChild(repsInput);
-  const setsLab = document.createElement("label");
-  setsLab.textContent = "Sets";
-  const setsInput = document.createElement("input");
-  setsInput.type = "text";
-  setsInput.value = exercise.sets || "1";
-  bindEditorInput(setsInput, workoutId, index, "sets");
-  setsLab.appendChild(setsInput);
   workGrid.appendChild(weightLab);
   workGrid.appendChild(repsLab);
-  workGrid.appendChild(setsLab);
+  if (!isCardio()) {
+    const setsLab = document.createElement("label");
+    setsLab.textContent = "Sets";
+    const setsInput = document.createElement("input");
+    setsInput.type = "text";
+    setsInput.value = exercise.sets || "1";
+    bindEditorInput(setsInput, workoutId, index, "sets");
+    setsLab.appendChild(setsInput);
+    workGrid.appendChild(setsLab);
+  }
   node.appendChild(workGrid);
 
   const noteLab = document.createElement("label");
@@ -2507,11 +2601,20 @@ function handleAddExercise(event) {
   }
   const workout = getWorkoutById(workoutId);
   const kind = ui.exerciseKindInput?.value || "weights";
+  const isCardio = kind === "cardio";
+  const presetId = ui.cardioPresetSelect?.value || "stairmaster";
+  const preset = CARDIO_PRESETS.find((p) => p.id === presetId);
   const payload = {
-    name: ui.exerciseNameInput.value.trim(),
-    weight: ui.exerciseWeightInput.value.trim(),
-    reps: ui.exerciseRepsInput.value.trim(),
-    sets: ui.exerciseSetsInput.value.trim() || "1",
+    name: isCardio
+      ? (presetId === "custom" ? ui.exerciseNameInput.value.trim() : (preset?.label || ui.exerciseNameInput.value.trim()))
+      : ui.exerciseNameInput.value.trim(),
+    weight: isCardio
+      ? (ui.cardioDifficultyInput?.value.trim() || "")
+      : ui.exerciseWeightInput.value.trim(),
+    reps: isCardio
+      ? (ui.cardioMinutesInput?.value.trim() || "")
+      : ui.exerciseRepsInput.value.trim(),
+    sets: isCardio ? "1" : (ui.exerciseSetsInput.value.trim() || "1"),
     kind,
     note: ui.exerciseNoteInput?.value.trim() || "",
     warmupWeight: "",
@@ -2535,6 +2638,8 @@ function handleAddExercise(event) {
   ui.exerciseWeightInput.value = "";
   ui.exerciseRepsInput.value = "";
   ui.exerciseSetsInput.value = "";
+  if (ui.cardioMinutesInput) ui.cardioMinutesInput.value = "";
+  if (ui.cardioDifficultyInput) ui.cardioDifficultyInput.value = "";
   if (ui.exerciseNoteInput) ui.exerciseNoteInput.value = "";
   ui.editWorkoutSelect.value = workoutId;
   syncAddWorkoutFromEditor();
@@ -2651,6 +2756,9 @@ function setup() {
   ui.addWorkoutSelect.addEventListener("change", handleAddWorkoutSelectChange);
   ui.saveWorkoutNameBtn.addEventListener("click", handleSaveWorkoutName);
   ui.addExerciseForm.addEventListener("submit", handleAddExercise);
+  ui.exerciseKindInput?.addEventListener("change", syncAddExerciseFormLayout);
+  ui.cardioPresetSelect?.addEventListener("change", syncAddExerciseFormLayout);
+  syncAddExerciseFormLayout();
   ui.todayWorkoutSelect.addEventListener("change", applyTodayWorkout);
   ui.clearTodayWorkoutBtn.addEventListener("click", clearTodayWorkout);
   ui.toggleUpcomingPreviewBtn.addEventListener("click", () => { upcomingPreviewVisible = !upcomingPreviewVisible; renderUpcoming(); });

@@ -68,9 +68,10 @@
               <span class="stat-label">Today</span>
               <p id="dailyKgCounter" class="stat-value"></p>
             </div>
-            <div class="stat-tile">
+            <div class="stat-tile" id="dailyCardioTile">
               <span class="stat-label">Cardio</span>
               <p id="dailyCardioCounter" class="stat-value muted"></p>
+              <p id="dailyCardioDetail" class="stat-detail muted hidden"></p>
             </div>
           </div>
 
@@ -215,9 +216,27 @@
                   <h4 class="plan-subheading">Add exercise</h4>
                   <form id="addExerciseForm" class="add-form">
                     <select id="addWorkoutSelect" class="hidden" required aria-hidden="true" tabindex="-1"></select>
-                    <label for="exerciseNameInput">Exercise</label>
-                    <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
-                    <div class="editor-grid">
+                    <label for="exerciseKindInput">Type</label>
+                    <select id="exerciseKindInput">
+                      <option value="weights">Weights</option>
+                      <option value="cardio">Cardio</option>
+                    </select>
+                    <div id="cardioPresetRow" class="hidden">
+                      <label for="cardioPresetSelect">Cardio exercise</label>
+                      <select id="cardioPresetSelect">
+                        <option value="stairmaster">Stairmaster</option>
+                        <option value="cycling">Cycling</option>
+                        <option value="treadmill">Treadmill</option>
+                        <option value="rowing">Rowing</option>
+                        <option value="elliptical">Elliptical</option>
+                        <option value="custom">Other cardio</option>
+                      </select>
+                    </div>
+                    <div id="exerciseNameField">
+                      <label for="exerciseNameInput">Exercise name</label>
+                      <input id="exerciseNameInput" type="text" placeholder="e.g. Incline Dumbbell Press" required />
+                    </div>
+                    <div id="weightsFieldsRow" class="editor-grid">
                       <div>
                         <label for="exerciseWeightInput">Weight (kg)</label>
                         <input id="exerciseWeightInput" type="text" inputmode="decimal" placeholder="36" />
@@ -231,11 +250,16 @@
                         <input id="exerciseSetsInput" type="text" inputmode="numeric" placeholder="3" />
                       </div>
                     </div>
-                    <label for="exerciseKindInput">Type</label>
-                    <select id="exerciseKindInput">
-                      <option value="weights">Weights</option>
-                      <option value="cardio">Cardio (minutes)</option>
-                    </select>
+                    <div id="cardioFieldsRow" class="editor-grid hidden">
+                      <div>
+                        <label for="cardioMinutesInput">Time (minutes)</label>
+                        <input id="cardioMinutesInput" type="text" inputmode="numeric" placeholder="20" />
+                      </div>
+                      <div>
+                        <label for="cardioDifficultyInput">Difficulty / level</label>
+                        <input id="cardioDifficultyInput" type="text" placeholder="e.g. 8 or medium" />
+                      </div>
+                    </div>
                     <label for="exerciseNoteInput">Note (optional)</label>
                     <input id="exerciseNoteInput" type="text" placeholder="e.g. Machine 4" />
                     <button type="submit" class="btn primary">Add exercise</button>

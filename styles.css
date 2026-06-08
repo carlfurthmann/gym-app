@@ -343,6 +343,17 @@ body.liquid-bg-fallback::before {
   line-height: 1.35;
 }
 
+.stat-detail {
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.editor-row-cardio {
+  grid-template-columns: 1fr 1fr;
+}
+
 .home-weekly-summary {
   margin-top: 4px;
 }
