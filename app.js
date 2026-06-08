@@ -86,18 +86,18 @@ function getLiquidEtherOptions() {
   const light = isLightMode();
   return {
     colors: getThemeLiquidColors(),
-    resolution: mobile ? 0.26 : light ? 0.38 : 0.42,
-    iterationsPoisson: mobile ? 10 : 20,
-    iterationsViscous: mobile ? 10 : 20,
-    mouseForce: mobile ? 8 : light ? 5 : 11,
-    cursorSize: mobile ? 56 : light ? 38 : 72,
+    resolution: mobile ? 0.26 : light ? 0.4 : 0.42,
+    iterationsPoisson: mobile ? 10 : 22,
+    iterationsViscous: mobile ? 10 : 22,
+    mouseForce: mobile ? 8 : light ? 7 : 11,
+    cursorSize: mobile ? 56 : light ? 50 : 72,
     autoDemo: true,
-    autoSpeed: light ? 0.2 : 0.28,
-    autoIntensity: light ? 0.5 : 1.0,
-    backgroundColor: light ? [1, 1, 1, 0] : [0, 0, 0, 0],
-    fluidGain: light ? 1.6 : 2.6,
-    fluidMix: light ? 0.32 : 0.5,
-    maxDisplay: light ? 0.45 : 0.75
+    autoSpeed: light ? 0.24 : 0.28,
+    autoIntensity: light ? 0.85 : 1.0,
+    backgroundColor: [0, 0, 0, 0],
+    fluidGain: light ? 2.3 : 2.6,
+    fluidMix: light ? 0.46 : 0.5,
+    maxDisplay: light ? 0.58 : 0.75
   };
 }
 

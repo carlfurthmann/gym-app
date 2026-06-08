@@ -59,9 +59,9 @@ body.liquid-bg-fallback::before {
 
 :root:not(.dark) body.liquid-bg-fallback::before {
   background:
-    radial-gradient(ellipse 90% 60% at 20% 25%, color-mix(in srgb, var(--gym-primary) 28%, transparent), transparent 70%),
-    radial-gradient(ellipse 80% 55% at 78% 72%, color-mix(in srgb, var(--gym-secondary) 22%, transparent), transparent 72%),
-    radial-gradient(ellipse 70% 50% at 50% 50%, color-mix(in srgb, var(--gym-accent) 16%, transparent), transparent 75%);
+    radial-gradient(ellipse 90% 60% at 20% 25%, color-mix(in srgb, var(--gym-primary) 34%, transparent), transparent 70%),
+    radial-gradient(ellipse 80% 55% at 78% 72%, color-mix(in srgb, var(--gym-secondary) 28%, transparent), transparent 72%),
+    radial-gradient(ellipse 70% 50% at 50% 50%, color-mix(in srgb, var(--gym-accent) 20%, transparent), transparent 75%);
 }
 
 @keyframes liquid-fallback-drift {
@@ -90,7 +90,7 @@ body.liquid-bg-fallback::before {
 }
 
 :root:not(.dark) .liquid-ether-bg {
-  opacity: 0.22;
+  opacity: 0.36;
 }
 
 .liquid-ether-bg.hidden {
