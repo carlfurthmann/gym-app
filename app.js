@@ -430,7 +430,7 @@ const ui = {
 };
 const YOU_PANELS = ["youProfilePanel", "youRecordsPanel", "youCalendarPanel"];
 let upcomingPreviewVisible = false;
-let homeStatsExpanded = false;
+let homeStatsExpanded = true;
 let showPrsOnly = false;
 let planExercisesExpanded = false;
 let planEditMode = false;
@@ -3075,6 +3075,7 @@ function setup() {
   ui.workoutCompleteDialog?.addEventListener("close", () => {
     if (ui.workoutCompleteDialog.returnValue === "home") navigateToPage("homePage");
   });
+  setHomeStatsExpanded(homeStatsExpanded);
   renderAll();
   if (shouldAutoOpenWorkout()) navigateToPage("workoutPage");
 }
