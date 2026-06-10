@@ -298,6 +298,7 @@ const ui = {
   homeTodayTitle: document.getElementById("homeTodayTitle"),
   homeTodaySubtitle: document.getElementById("homeTodaySubtitle"),
   homeTodayCount: document.getElementById("homeTodayCount"),
+  goWorkoutBtn: document.getElementById("goWorkoutBtn"),
   routineTitle: document.getElementById("routineTitle"),
   routineSubtitle: document.getElementById("routineSubtitle"),
   exerciseList: document.getElementById("exerciseList"),
@@ -340,8 +341,22 @@ const ui = {
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarGrid: document.getElementById("calendarGrid"),
   exerciseTemplate: document.getElementById("exerciseTemplate"),
-  navButtons: Array.from(document.querySelectorAll(".nav-btn")),
-  pages: Array.from(document.querySelectorAll(".page")),
+  navButtons: Array.from(document.querySelectorAll(".site-nav .nav-btn, .bottom-nav .nav-btn")),
+  pages: Array.from(document.querySelectorAll("#homePage, #workoutPage, #planPage, #profilePage")),
+  starterPlanBanner: document.getElementById("starterPlanBanner"),
+  dismissStarterBannerBtn: document.getElementById("dismissStarterBannerBtn"),
+  toggleHomeStatsBtn: document.getElementById("toggleHomeStatsBtn"),
+  homeMoreStats: document.getElementById("homeMoreStats"),
+  planSimpleView: document.getElementById("planSimpleView"),
+  planEditView: document.getElementById("planEditView"),
+  openPlanEditBtn: document.getElementById("openPlanEditBtn"),
+  closePlanEditBtn: document.getElementById("closePlanEditBtn"),
+  workoutCompleteDialog: document.getElementById("workoutCompleteDialog"),
+  workoutCompleteTitle: document.getElementById("workoutCompleteTitle"),
+  workoutCompleteMessage: document.getElementById("workoutCompleteMessage"),
+  workoutCompleteStreak: document.getElementById("workoutCompleteStreak"),
+  workoutCompleteHomeBtn: document.getElementById("workoutCompleteHomeBtn"),
+  youSubnavButtons: Array.from(document.querySelectorAll(".you-subnav-btn")),
   syncStatus: document.getElementById("syncStatus"),
   syncLoggedOut: document.getElementById("syncLoggedOut"),
   syncLoggedIn: document.getElementById("syncLoggedIn"),
@@ -413,9 +428,13 @@ const ui = {
   creatineReminderTime: document.getElementById("creatineReminderTime"),
   testNotificationBtn: document.getElementById("testNotificationBtn")
 };
+const YOU_PANELS = ["youProfilePanel", "youRecordsPanel", "youCalendarPanel"];
 let upcomingPreviewVisible = false;
+let homeStatsExpanded = false;
 let showPrsOnly = false;
 let planExercisesExpanded = false;
+let planEditMode = false;
+let activeYouPanel = "youProfilePanel";
 let selectedExerciseHistoryName = null;
 let reminderCheckInterval = null;
 let exercisesExpanded = false;
@@ -543,10 +562,25 @@ function defaultWorkoutLibrary() {
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
+  const isFirstVisit = !saved;
   const raw = saved ? safelyParse(saved) : {
     doneByDate: {}, completedByDate: {}, weekRestDayOverrides: {}, dailyWorkoutOverrides: {}
   };
-  return migrateState(raw);
+  const migrated = migrateState(raw);
+  if (isFirstVisit) applyStarterPlan(migrated);
+  return migrated;
+}
+
+function applyStarterPlan(s) {
+  if (s.userSettings?.starterPlanApplied) return;
+  if (!Array.isArray(s.workoutLibrary) || !s.workoutLibrary.length) {
+    s.workoutLibrary = defaultWorkoutLibrary();
+    s.rotationWorkoutIds = s.workoutLibrary.filter((w) => !isExcludedFromDefaultRotation(w)).map((w) => w.id);
+  }
+  ensureWandasWorkouts(s);
+  s.userSettings = s.userSettings || {};
+  s.userSettings.starterPlanApplied = true;
+  s.userSettings.starterPlanBanner = true;
 }
 
 function safelyParse(raw) { try { return JSON.parse(raw); } catch { return null; } }
@@ -608,6 +642,8 @@ function migrateState(parsed) {
     colorTheme: THEME_OPTIONS.some((t) => t.id === s.userSettings?.colorTheme) ? s.userSettings.colorTheme : "purple",
     darkMode: s.userSettings?.darkMode !== undefined ? Boolean(s.userSettings.darkMode) : true,
     liquidBackground: s.userSettings?.liquidBackground !== undefined ? Boolean(s.userSettings.liquidBackground) : defaultLiquidBg,
+    starterPlanApplied: Boolean(s.userSettings?.starterPlanApplied),
+    starterPlanBanner: s.userSettings?.starterPlanBanner !== undefined ? Boolean(s.userSettings.starterPlanBanner) : false,
     reminders: {
       creatine: {
         enabled: Boolean(creatineReminder.enabled),
@@ -1773,20 +1809,103 @@ function updateProfileAvatar() {
   if (ui.profileAvatarInitials) ui.profileAvatarInitials.textContent = getProfileInitials();
 }
 
-function navigateToPage(pageId) {
-  document.querySelectorAll(".site-nav .nav-btn").forEach((b) => {
-    b.classList.toggle("active", b.dataset.pageTarget === pageId);
+function navHighlightForPage(pageId) {
+  if (pageId === "workoutPage") return "homePage";
+  return pageId;
+}
+
+function showYouPanel(panelId) {
+  if (!YOU_PANELS.includes(panelId)) return;
+  activeYouPanel = panelId;
+  YOU_PANELS.forEach((id) => {
+    document.getElementById(id)?.classList.toggle("hidden", id !== panelId);
+  });
+  ui.youSubnavButtons?.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.youPanel === panelId);
+  });
+}
+
+function setPlanEditMode(open) {
+  planEditMode = open;
+  ui.planSimpleView?.classList.toggle("hidden", open);
+  ui.planEditView?.classList.toggle("hidden", !open);
+}
+
+function setHomeStatsExpanded(open) {
+  homeStatsExpanded = open;
+  ui.homeMoreStats?.classList.toggle("hidden", !open);
+  if (ui.toggleHomeStatsBtn) {
+    ui.toggleHomeStatsBtn.textContent = open ? "Hide stats" : "More stats";
+    ui.toggleHomeStatsBtn.setAttribute("aria-expanded", String(open));
+  }
+}
+
+function updateStarterPlanBanner() {
+  if (!ui.starterPlanBanner) return;
+  const show = Boolean(state.userSettings?.starterPlanBanner);
+  ui.starterPlanBanner.classList.toggle("hidden", !show);
+}
+
+function dismissStarterPlanBanner() {
+  state.userSettings = state.userSettings || {};
+  state.userSettings.starterPlanBanner = false;
+  saveState();
+  updateStarterPlanBanner();
+}
+
+function shouldAutoOpenWorkout() {
+  const today = new Date();
+  const routine = getRoutineForDate(today);
+  const key = dateKey();
+  if (!routine.exercises.length) return false;
+  if (state.completedByDate[key]) return false;
+  return true;
+}
+
+function showWorkoutCompleteDialog({ focus, kg, streak, prCount }) {
+  if (!ui.workoutCompleteDialog) return;
+  if (ui.workoutCompleteTitle) ui.workoutCompleteTitle.textContent = "Workout complete";
+  if (ui.workoutCompleteMessage) {
+    ui.workoutCompleteMessage.textContent = `${focus} logged — ${kg.toLocaleString()} kg total${prCount ? `, ${prCount} PR${prCount === 1 ? "" : "s"}` : ""}.`;
+  }
+  if (ui.workoutCompleteStreak) {
+    ui.workoutCompleteStreak.textContent = streak
+      ? `${streak} week streak — keep it going.`
+      : "Great session — start a weekly streak by training again next week.";
+  }
+  ui.workoutCompleteDialog.showModal();
+}
+
+function navigateToPage(pageId, options = {}) {
+  const highlight = navHighlightForPage(pageId);
+  document.querySelectorAll(".site-nav .nav-btn, .bottom-nav .nav-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.pageTarget === highlight);
   });
   document.querySelectorAll(".profile-avatar-btn").forEach((b) => {
-    b.classList.toggle("active", b.dataset.pageTarget === pageId);
+    b.classList.toggle("active", pageId === "profilePage");
   });
   ui.pages.forEach((p) => p.classList.toggle("hidden", p.id !== pageId));
+  if (pageId === "profilePage") showYouPanel(options.youPanel || activeYouPanel || "youProfilePanel");
+  if (pageId === "planPage" && options.openPlanEdit) setPlanEditMode(true);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function renderNav() {
   document.querySelectorAll("[data-page-target]").forEach((btn) => {
-    btn.addEventListener("click", () => navigateToPage(btn.dataset.pageTarget));
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.pageTarget;
+      if (target === "planPage" && btn.classList.contains("link-btn")) {
+        navigateToPage("planPage", { openPlanEdit: true });
+        return;
+      }
+      navigateToPage(target);
+    });
+  });
+  ui.youSubnavButtons?.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      showYouPanel(btn.dataset.youPanel);
+      navigateToPage("profilePage", { youPanel: btn.dataset.youPanel });
+    });
   });
 }
 
@@ -1915,11 +2034,22 @@ function renderHomeAndWorkout() {
   const todayRoutine = getRoutineForDate(today);
   const todayName = dayNameFromDate(today);
   ui.todayLabel.textContent = `Today is ${todayName}`;
-  ui.homeTodayTitle.textContent = `${todayName}: ${todayRoutine.focus}`;
+  ui.homeTodayTitle.textContent = todayRoutine.exercises.length
+    ? todayRoutine.focus
+    : "Rest day";
   ui.homeTodaySubtitle.textContent = todayRoutine.exercises.length
-    ? `${todayRoutine.focus} — ${todayRoutine.exercises.length} exercises on deck.`
-    : "Rest day — recover and come back stronger.";
-  ui.homeTodayCount.textContent = `Exercises: ${todayRoutine.exercises.length}`;
+    ? `${todayName} — ${todayRoutine.exercises.length} exercise${todayRoutine.exercises.length === 1 ? "" : "s"} on deck`
+    : "Recover and come back stronger.";
+  ui.homeTodayCount.textContent = todayRoutine.exercises.length
+    ? `Tap Start to log today's session`
+    : "No workout scheduled — check Plan if that looks wrong";
+  if (ui.goWorkoutBtn) {
+    ui.goWorkoutBtn.textContent = todayRoutine.exercises.length
+      ? "Start today's workout"
+      : "View plan";
+    ui.goWorkoutBtn.dataset.pageTarget = todayRoutine.exercises.length ? "workoutPage" : "planPage";
+  }
+  updateStarterPlanBanner();
   const kg = computeTotalKgForDate(today, todayRoutine);
   const cardioDisplay = formatHomeCardioDisplay(today, todayRoutine);
   ui.dailyKgCounter.textContent = `Today's lifted total: ${kg} kg`;
@@ -2043,7 +2173,7 @@ function renderHomeAndWorkout() {
   if (showPrsOnly && !ui.exerciseList.children.length) {
     const p = document.createElement("p");
     p.className = "muted";
-    p.textContent = "No PRs for today’s planned weights. Check Records tab or lower weights in Plan.";
+    p.textContent = "No PRs for today’s planned weights. Check You → Records or lower weights in Plan.";
     ui.exerciseList.appendChild(p);
   }
 }
@@ -2551,8 +2681,19 @@ function completeWorkoutForDate(date) {
   state.completedByDate[key] = true;
   markAllExercisesDoneForDate(date, routine);
   recordWorkoutSession(date, routine);
+  const prCount = routine.exercises.filter((e) => !isCardioExercise(e) && checkIsPR(e)).length;
   updatePersonalBestsFromExercises(routine.exercises, key);
   saveState();
+  const isToday = key === dateKey();
+  if (isToday) {
+    const kg = computeTotalKgForDate(date, routine);
+    showWorkoutCompleteDialog({
+      focus: routine.focus,
+      kg,
+      streak: computeWeeklyStreak(),
+      prCount
+    });
+  }
   renderAll();
 }
 
@@ -2834,7 +2975,15 @@ function setup() {
     exercisesExpanded = false;
     renderHomeAndWorkout();
   });
+  ui.toggleHomeStatsBtn?.addEventListener("click", () => setHomeStatsExpanded(!homeStatsExpanded));
+  ui.dismissStarterBannerBtn?.addEventListener("click", dismissStarterPlanBanner);
+  ui.openPlanEditBtn?.addEventListener("click", () => setPlanEditMode(true));
+  ui.closePlanEditBtn?.addEventListener("click", () => setPlanEditMode(false));
+  ui.workoutCompleteDialog?.addEventListener("close", () => {
+    if (ui.workoutCompleteDialog.returnValue === "home") navigateToPage("homePage");
+  });
   renderAll();
+  if (shouldAutoOpenWorkout()) navigateToPage("workoutPage");
 }
 
 setup();

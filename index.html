@@ -18,11 +18,9 @@
             <span class="brand-tag">Big Boys Lift</span>
           </button>
           <nav class="site-nav" aria-label="Main">
-            <button class="nav-btn active" data-page-target="homePage" type="button">Home</button>
-            <button class="nav-btn" data-page-target="workoutPage" type="button">Workout</button>
+            <button class="nav-btn active" data-page-target="homePage" type="button">Today</button>
             <button class="nav-btn" data-page-target="planPage" type="button">Plan</button>
-            <button class="nav-btn" data-page-target="recordsPage" type="button">Records</button>
-            <button class="nav-btn" data-page-target="calendarPage" type="button">Calendar</button>
+            <button class="nav-btn nav-btn-you" data-page-target="profilePage" type="button">You</button>
           </nav>
           <div class="site-actions">
             <div class="site-meta">
@@ -45,64 +43,71 @@
 
       <main class="app-main">
         <section id="homePage" class="page">
-          <div class="home-hero">
-            <p class="home-eyebrow" id="homeEyebrow">Your training hub</p>
-            <h1 class="home-title">Big <span class="text-accent">Boys</span> Lift</h1>
+          <div id="starterPlanBanner" class="starter-plan-banner hidden" role="status">
+            <p>Using a starter plan — customize workouts in <button class="link-btn" data-page-target="planPage" type="button">Plan</button>.</p>
+            <button id="dismissStarterBannerBtn" class="btn ghost" type="button">Got it</button>
+          </div>
+
+          <div class="home-hero home-hero-compact">
+            <p class="home-eyebrow" id="homeEyebrow">Today</p>
+            <h1 id="homeTodayTitle" class="home-title-sm">Today</h1>
             <p id="homeTodaySubtitle" class="home-lead muted"></p>
+            <p id="homeTodayCount" class="home-today-count muted"></p>
             <div class="home-cta">
-              <button id="goWorkoutBtn" class="btn primary" data-page-target="workoutPage" type="button">Start today&apos;s workout</button>
-              <button class="btn ghost nav-jump" data-page-target="planPage" type="button">View plan</button>
+              <button id="goWorkoutBtn" class="btn primary btn-lg" data-page-target="workoutPage" type="button">Start today&apos;s workout</button>
             </div>
           </div>
 
-          <div class="stats-grid">
-            <div class="stat-tile">
-              <span class="stat-label">This month</span>
-              <p id="monthlyAttendanceCounter" class="stat-value"></p>
+          <div class="home-summary-strip">
+            <div class="stat-tile stat-tile-inline">
+              <span class="stat-label">Streak</span>
+              <p id="weeklyStreakCounter" class="stat-value"></p>
             </div>
-            <div class="stat-tile">
-              <span class="stat-label">Volume</span>
-              <p id="monthlyKgCounter" class="stat-value"></p>
-            </div>
-            <div class="stat-tile">
-              <span class="stat-label">Today</span>
-              <p id="dailyKgCounter" class="stat-value"></p>
-            </div>
-            <div class="stat-tile" id="dailyCardioTile">
-              <span class="stat-label">Cardio</span>
-              <p id="dailyCardioCounter" class="stat-value muted"></p>
-              <p id="dailyCardioDetail" class="stat-detail muted hidden"></p>
-            </div>
+            <button id="toggleHomeStatsBtn" class="btn ghost" type="button" aria-expanded="false">More stats</button>
           </div>
 
-          <div class="home-weekly-summary">
-            <h2 class="home-section-title">Weekly progress</h2>
-            <div class="stats-grid stats-grid-weekly">
+          <div id="homeMoreStats" class="home-more-stats hidden">
+            <div class="stats-grid">
               <div class="stat-tile">
-                <span class="stat-label">Streak</span>
-                <p id="weeklyStreakCounter" class="stat-value"></p>
+                <span class="stat-label">This month</span>
+                <p id="monthlyAttendanceCounter" class="stat-value"></p>
               </div>
               <div class="stat-tile">
-                <span class="stat-label">This week</span>
-                <p id="weeklyVolumeCounter" class="stat-value"></p>
+                <span class="stat-label">Volume</span>
+                <p id="monthlyKgCounter" class="stat-value"></p>
               </div>
               <div class="stat-tile">
-                <span class="stat-label">vs last week</span>
-                <p id="weeklyVolumeCompare" class="stat-value"></p>
+                <span class="stat-label">Today</span>
+                <p id="dailyKgCounter" class="stat-value"></p>
+              </div>
+              <div class="stat-tile" id="dailyCardioTile">
+                <span class="stat-label">Cardio</span>
+                <p id="dailyCardioCounter" class="stat-value muted"></p>
+                <p id="dailyCardioDetail" class="stat-detail muted hidden"></p>
               </div>
             </div>
-          </div>
 
-          <div class="home-panels">
-            <div class="content-section">
-              <h2 id="homeTodayTitle">Today</h2>
-              <p id="homeTodayCount" class="muted"></p>
+            <div class="home-weekly-summary">
+              <h2 class="home-section-title">Weekly progress</h2>
+              <div class="stats-grid stats-grid-weekly">
+                <div class="stat-tile">
+                  <span class="stat-label">This week</span>
+                  <p id="weeklyVolumeCounter" class="stat-value"></p>
+                </div>
+                <div class="stat-tile">
+                  <span class="stat-label">vs last week</span>
+                  <p id="weeklyVolumeCompare" class="stat-value"></p>
+                </div>
+              </div>
             </div>
-            <div class="content-section">
-              <h2>Upcoming</h2>
-              <p id="upcomingText"></p>
-              <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
-              <div id="upcomingPreview" class="exercise-list hidden"></div>
+
+            <div class="home-panels">
+              <div class="content-section">
+                <h2>Upcoming</h2>
+                <p id="upcomingText"></p>
+                <button id="toggleUpcomingPreviewBtn" class="btn ghost" type="button">Show upcoming exercises</button>
+                <div id="upcomingPreview" class="exercise-list hidden"></div>
+              </div>
             </div>
           </div>
         </section>
@@ -110,7 +115,8 @@
         <section id="workoutPage" class="page hidden">
           <div class="page-header">
             <h1>Workout</h1>
-            <p class="muted">Log sets, timers, and PRs for today.</p>
+            <p class="muted">Log today&apos;s session — weights, timers, and PRs.</p>
+            <p class="workout-scope-hint muted">Changes here are for today only. Edit your program in <button class="link-btn" data-page-target="planPage" type="button">Plan</button>.</p>
           </div>
           <div class="workout-layout">
             <aside class="content-section workout-aside">
@@ -162,26 +168,32 @@
         <section id="planPage" class="page hidden">
           <div class="page-header">
             <h1>Plan</h1>
-            <p class="muted">Build workouts, set your weekly rotation, and edit exercises.</p>
+            <p class="muted">Your weekly rotation and schedule.</p>
           </div>
-          <div class="plan-layout">
-            <div class="plan-col">
-              <div class="content-section">
-                <h3>My workouts</h3>
-                <p class="muted">Check workouts to include in your rotation.</p>
-                <div id="rotationWorkoutList" class="rotation-list"></div>
-              </div>
-              <div class="content-section">
-                <h3>Weekly schedule</h3>
-                <p class="muted">Auto days pull from your rotation pool in order.</p>
-                <div class="editor-controls">
-                  <label for="restDaySelect">Rest day (this week only)</label>
-                  <select id="restDaySelect"></select>
-                </div>
-                <div id="weeklyDaySchedule" class="weekly-schedule"></div>
-              </div>
+          <div id="planSimpleView" class="plan-layout plan-simple-layout">
+            <div class="content-section">
+              <h3>This week</h3>
+              <p class="muted">Check which workouts rotate through your week.</p>
+              <div id="rotationWorkoutList" class="rotation-list"></div>
             </div>
-            <div class="plan-col">
+            <div class="content-section">
+              <h3>Weekly schedule</h3>
+              <p class="muted">Auto days pull from your rotation pool in order.</p>
+              <div class="editor-controls">
+                <label for="restDaySelect">Rest day (this week only)</label>
+                <select id="restDaySelect"></select>
+              </div>
+              <div id="weeklyDaySchedule" class="weekly-schedule"></div>
+            </div>
+            <div class="plan-simple-actions">
+              <button id="openPlanEditBtn" class="btn primary" type="button">Edit workouts</button>
+            </div>
+          </div>
+          <div id="planEditView" class="plan-layout plan-edit-layout hidden">
+            <div class="plan-edit-toolbar">
+              <button id="closePlanEditBtn" class="btn ghost" type="button">← Back to schedule</button>
+            </div>
+            <div class="plan-col plan-col-full">
               <div class="content-section plan-editor-panel">
                 <h3>Workout editor</h3>
                 <div class="plan-editor-header">
@@ -270,66 +282,19 @@
           </div>
         </section>
 
-        <section id="recordsPage" class="page hidden">
-          <div class="page-header">
-            <h1>Records</h1>
-            <p class="muted">Tap an exercise to see its history. Volume PRs update on complete workout.</p>
-          </div>
-          <div id="exerciseHistoryPanel" class="exercise-history-panel content-section hidden">
-            <div class="exercise-history-head">
-              <h3 id="exerciseHistoryTitle">Exercise history</h3>
-              <button id="closeExerciseHistoryBtn" class="btn ghost" type="button">Close</button>
-            </div>
-            <p id="exerciseHistorySubtitle" class="muted"></p>
-            <div id="exerciseHistoryChart" class="exercise-history-chart" role="img" aria-label="Exercise progress chart"></div>
-            <div id="exerciseHistoryPoints" class="exercise-history-points"></div>
-          </div>
-          <div class="records-layout">
-            <div class="content-section">
-              <h3>1 rep maxes</h3>
-              <p id="recordsOneRmSummary" class="muted"></p>
-              <div id="recordsOneRmList" class="records-list"></div>
-            </div>
-            <div class="content-section">
-              <h3>Today&apos;s volume PRs</h3>
-              <p id="recordsTodaySummary" class="muted"></p>
-              <div id="recordsTodayList" class="records-list"></div>
-            </div>
-            <div class="content-section">
-              <h3>All volume bests</h3>
-              <p id="recordsAllSummary" class="muted"></p>
-              <div id="recordsAllList" class="records-list"></div>
-            </div>
-          </div>
-        </section>
-
-        <section id="calendarPage" class="page hidden">
-          <div class="page-header">
-            <h1>Calendar</h1>
-            <p class="muted">Green = done, red = missed, muted = rest.</p>
-          </div>
-          <div class="calendar-layout">
-            <div class="content-section calendar-side">
-              <label for="pastDateInput">Mark past day</label>
-              <input id="pastDateInput" type="date" />
-              <div class="attendance-buttons">
-                <button id="markPastDoneBtn" class="btn primary" type="button">Mark done</button>
-                <button id="unmarkPastDoneBtn" class="btn ghost" type="button">Unmark</button>
-              </div>
-            </div>
-            <div class="content-section calendar-main">
-              <div id="calendarMonthLabel" class="calendar-month"></div>
-              <div id="calendarGrid" class="calendar-grid"></div>
-            </div>
-          </div>
-        </section>
-
         <section id="profilePage" class="page hidden">
           <div class="page-header profile-intro">
-            <h1>Profile</h1>
+            <h1>You</h1>
             <p id="profileEmailLine" class="muted">Not signed in</p>
             <p id="profileSummaryLine" class="counter-text"></p>
           </div>
+          <nav class="you-subnav" aria-label="Profile sections">
+            <button class="you-subnav-btn active" data-you-panel="youProfilePanel" type="button">Profile</button>
+            <button class="you-subnav-btn" data-you-panel="youRecordsPanel" type="button">Records</button>
+            <button class="you-subnav-btn" data-you-panel="youCalendarPanel" type="button">Calendar</button>
+          </nav>
+
+          <div id="youProfilePanel" class="you-panel">
           <div class="profile-layout">
             <div class="content-section">
               <h3>About you</h3>
@@ -392,8 +357,63 @@
               </div>
             </div>
           </div>
+          </div>
+
+          <div id="youRecordsPanel" class="you-panel hidden">
+          <p class="muted you-panel-lead">Tap an exercise to see its history. Volume PRs update when you complete a workout.</p>
+          <div id="exerciseHistoryPanel" class="exercise-history-panel content-section hidden">
+            <div class="exercise-history-head">
+              <h3 id="exerciseHistoryTitle">Exercise history</h3>
+              <button id="closeExerciseHistoryBtn" class="btn ghost" type="button">Close</button>
+            </div>
+            <p id="exerciseHistorySubtitle" class="muted"></p>
+            <div id="exerciseHistoryChart" class="exercise-history-chart" role="img" aria-label="Exercise progress chart"></div>
+            <div id="exerciseHistoryPoints" class="exercise-history-points"></div>
+          </div>
+          <div class="records-layout">
+            <div class="content-section">
+              <h3>1 rep maxes</h3>
+              <p id="recordsOneRmSummary" class="muted"></p>
+              <div id="recordsOneRmList" class="records-list"></div>
+            </div>
+            <div class="content-section">
+              <h3>Today&apos;s volume PRs</h3>
+              <p id="recordsTodaySummary" class="muted"></p>
+              <div id="recordsTodayList" class="records-list"></div>
+            </div>
+            <div class="content-section">
+              <h3>All volume bests</h3>
+              <p id="recordsAllSummary" class="muted"></p>
+              <div id="recordsAllList" class="records-list"></div>
+            </div>
+          </div>
+          </div>
+
+          <div id="youCalendarPanel" class="you-panel hidden">
+          <p class="muted you-panel-lead">Green = done, red = missed, muted = rest.</p>
+          <div class="calendar-layout">
+            <div class="content-section calendar-side">
+              <label for="pastDateInput">Mark past day</label>
+              <input id="pastDateInput" type="date" />
+              <div class="attendance-buttons">
+                <button id="markPastDoneBtn" class="btn primary" type="button">Mark done</button>
+                <button id="unmarkPastDoneBtn" class="btn ghost" type="button">Unmark</button>
+              </div>
+            </div>
+            <div class="content-section calendar-main">
+              <div id="calendarMonthLabel" class="calendar-month"></div>
+              <div id="calendarGrid" class="calendar-grid"></div>
+            </div>
+          </div>
+          </div>
         </section>
       </main>
+
+      <nav class="bottom-nav" aria-label="Main mobile">
+        <button class="nav-btn active" data-page-target="homePage" type="button">Today</button>
+        <button class="nav-btn" data-page-target="planPage" type="button">Plan</button>
+        <button class="nav-btn" data-page-target="profilePage" type="button">You</button>
+      </nav>
     </div>
 
     <template id="exerciseTemplate">
@@ -440,6 +460,18 @@
         </div>
       </article>
     </template>
+
+    <dialog id="workoutCompleteDialog" class="confirm-dialog workout-complete-dialog">
+      <form method="dialog" class="confirm-dialog-inner">
+        <h3 id="workoutCompleteTitle">Workout complete</h3>
+        <p id="workoutCompleteMessage" class="muted"></p>
+        <p id="workoutCompleteStreak" class="workout-complete-streak"></p>
+        <div class="top-actions override-actions">
+          <button id="workoutCompleteHomeBtn" value="home" class="btn ghost" type="submit">Back to Today</button>
+          <button value="close" class="btn primary" type="submit">Nice</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="cloudConfirmDialog" class="confirm-dialog">
       <form method="dialog" class="confirm-dialog-inner">
