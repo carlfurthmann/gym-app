@@ -116,7 +116,7 @@
           <div class="page-header">
             <h1>Workout</h1>
             <p class="muted">Log today&apos;s session — weights, timers, and PRs.</p>
-            <p class="workout-scope-hint muted">Changes here are for today only. Edit your program in <button class="link-btn" data-page-target="planPage" type="button">Plan</button>.</p>
+            <p class="workout-scope-hint muted">Tap <strong>▾</strong> on an exercise to edit weight and reps — changes save to your plan.</p>
           </div>
           <div class="workout-layout">
             <aside class="content-section workout-aside">
@@ -151,7 +151,13 @@
               </div>
               <div class="workout-toolbar top-actions">
                 <button id="useLastSessionBtn" class="btn ghost hidden" type="button">Use last session weights</button>
-                <button id="showPrsOnlyBtn" class="btn ghost" type="button">Show PRs only</button>
+                <label class="workout-filter-label">
+                  Show
+                  <select id="workoutExerciseFilter">
+                    <option value="all">All exercises</option>
+                    <option value="prs">PRs only</option>
+                  </select>
+                </label>
                 <button id="expandAllExercisesBtn" class="btn ghost" type="button">Expand all</button>
                 <button id="collapseAllExercisesBtn" class="btn ghost" type="button">Collapse all</button>
               </div>
@@ -166,9 +172,15 @@
         </section>
 
         <section id="planPage" class="page hidden">
-          <div class="page-header">
-            <h1>Plan</h1>
-            <p class="muted">Your weekly rotation and schedule.</p>
+          <div class="page-header plan-page-header">
+            <div class="page-header-main">
+              <h1>Plan</h1>
+              <p class="muted">Your weekly rotation and schedule.</p>
+            </div>
+            <div class="plan-header-actions">
+              <button id="openPlanEditBtn" class="btn primary" type="button">Edit workouts</button>
+              <button id="closePlanEditBtn" class="btn ghost hidden" type="button">← Back to schedule</button>
+            </div>
           </div>
           <div id="planSimpleView" class="plan-layout plan-simple-layout">
             <div class="content-section">
@@ -185,14 +197,8 @@
               </div>
               <div id="weeklyDaySchedule" class="weekly-schedule"></div>
             </div>
-            <div class="plan-simple-actions">
-              <button id="openPlanEditBtn" class="btn primary" type="button">Edit workouts</button>
-            </div>
           </div>
           <div id="planEditView" class="plan-layout plan-edit-layout hidden">
-            <div class="plan-edit-toolbar">
-              <button id="closePlanEditBtn" class="btn ghost" type="button">← Back to schedule</button>
-            </div>
             <div class="plan-col plan-col-full">
               <div class="content-section plan-editor-panel">
                 <h3>Workout editor</h3>
@@ -434,7 +440,35 @@
           </button>
         </div>
         <div class="exercise-details">
-          <p class="exercise-info"></p>
+          <div class="workout-log-fields weights-log-fields">
+            <div class="workout-log-grid">
+              <label>
+                Weight (kg)
+                <input class="workout-weight-input" type="text" inputmode="decimal" placeholder="e.g. 60" />
+              </label>
+              <label>
+                Reps
+                <input class="workout-reps-input" type="text" placeholder="e.g. 8" />
+              </label>
+              <label>
+                Sets
+                <input class="workout-sets-input" type="text" inputmode="numeric" placeholder="3" />
+              </label>
+            </div>
+          </div>
+          <div class="workout-log-fields cardio-log-fields hidden">
+            <div class="workout-log-grid">
+              <label>
+                Minutes
+                <input class="workout-minutes-input" type="text" inputmode="numeric" placeholder="20" />
+              </label>
+              <label>
+                Difficulty
+                <input class="workout-difficulty-input" type="text" placeholder="e.g. 8" />
+              </label>
+            </div>
+          </div>
+          <p class="exercise-info muted"></p>
           <p class="exercise-best muted hidden"></p>
           <p class="exercise-one-rm-record muted hidden"></p>
           <div class="one-rm-row">

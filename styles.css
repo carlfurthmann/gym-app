@@ -387,13 +387,28 @@ body.liquid-bg-fallback::before {
   gap: clamp(16px, 2.5vw, 24px);
 }
 
-.plan-simple-actions {
+.plan-page-header {
   display: flex;
-  justify-content: flex-start;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.plan-edit-toolbar {
-  margin-bottom: 4px;
+.page-header-main {
+  flex: 1;
+  min-width: 200px;
+}
+
+.plan-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.plan-header-actions .btn {
+  white-space: nowrap;
 }
 
 .plan-col-full {
@@ -855,6 +870,47 @@ h2, h3, p {
 
 .workout-toolbar {
   margin-bottom: 12px;
+  align-items: center;
+}
+
+.workout-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.workout-filter-label select {
+  min-width: 130px;
+}
+
+.workout-log-fields {
+  margin-bottom: 4px;
+}
+
+.workout-log-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workout-log-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.workout-log-grid input {
+  width: 100%;
+}
+
+.cardio-log-fields .workout-log-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .records-list {
@@ -1534,6 +1590,18 @@ input {
 
   .editor-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workout-log-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-page-header .btn {
+    width: 100%;
+  }
+
+  .plan-header-actions {
+    width: 100%;
   }
 
   .calendar-cell {

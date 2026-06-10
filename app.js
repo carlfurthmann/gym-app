@@ -401,7 +401,7 @@ const ui = {
   cloudConfirmMessage: document.getElementById("cloudConfirmMessage"),
   cloudConfirmUseCloud: document.getElementById("cloudConfirmUseCloud"),
   cloudConfirmKeepPhone: document.getElementById("cloudConfirmKeepPhone"),
-  showPrsOnlyBtn: document.getElementById("showPrsOnlyBtn"),
+  workoutExerciseFilter: document.getElementById("workoutExerciseFilter"),
   expandAllExercisesBtn: document.getElementById("expandAllExercisesBtn"),
   collapseAllExercisesBtn: document.getElementById("collapseAllExercisesBtn"),
   recordsTodaySummary: document.getElementById("recordsTodaySummary"),
@@ -1829,6 +1829,8 @@ function setPlanEditMode(open) {
   planEditMode = open;
   ui.planSimpleView?.classList.toggle("hidden", open);
   ui.planEditView?.classList.toggle("hidden", !open);
+  ui.openPlanEditBtn?.classList.toggle("hidden", open);
+  ui.closePlanEditBtn?.classList.toggle("hidden", !open);
 }
 
 function setHomeStatsExpanded(open) {
@@ -2077,8 +2079,8 @@ function renderHomeAndWorkout() {
 
   const todayKey = dateKey();
   const doneSet = new Set(state.doneByDate[todayKey] || []);
-  if (ui.showPrsOnlyBtn) {
-    ui.showPrsOnlyBtn.textContent = showPrsOnly ? "Show all exercises" : "Show PRs only";
+  if (ui.workoutExerciseFilter) {
+    ui.workoutExerciseFilter.value = showPrsOnly ? "prs" : "all";
   }
 
   todayRoutine.exercises.forEach((exercise, index) => {
@@ -2166,6 +2168,7 @@ function renderHomeAndWorkout() {
         setExerciseExpanded(node, true);
       });
     });
+    if (todayRoutine.workoutId) bindWorkoutExerciseInputs(node, todayRoutine.workoutId, index);
     bindCollapsibleExercise(node);
     ui.exerciseList.appendChild(node);
   });
@@ -2393,6 +2396,96 @@ function updateEditorField(workoutId, exerciseIndex, field, value) {
   saveState();
   const todayRoutine = getRoutineForDate(new Date());
   if (todayRoutine.workoutId === workoutId) renderHomeAndWorkout();
+}
+
+function refreshWorkoutExerciseRow(node, exercise) {
+  normalizeExercise(exercise);
+  const info = formatExerciseInfo(exercise);
+  const shortEl = node.querySelector(".exercise-info-short");
+  const infoEl = node.querySelector(".exercise-info");
+  if (shortEl) shortEl.textContent = info;
+  if (infoEl) infoEl.textContent = info;
+  const isPr = !isCardioExercise(exercise) && checkIsPR(exercise);
+  node.classList.toggle("is-pr", isPr);
+  node.querySelector(".pr-badge")?.classList.toggle("hidden", !isPr);
+  const best = getPersonalBest(exercise.name);
+  const bestEl = node.querySelector(".exercise-best");
+  if (bestEl && !isCardioExercise(exercise)) {
+    bestEl.textContent = formatBestLine(best);
+    bestEl.classList.remove("hidden");
+  }
+  const detail = node.querySelector(".pr-detail");
+  if (detail) {
+    if (isPr && best) {
+      detail.textContent = `New best — was ${best.weight} kg × ${best.reps} (${formatSessionDate(best.dateKey)})`;
+      detail.classList.remove("hidden");
+    } else {
+      detail.classList.add("hidden");
+      detail.textContent = "";
+    }
+  }
+}
+
+function bindWorkoutExerciseInputs(node, workoutId, exerciseIndex) {
+  const workout = getWorkoutById(workoutId);
+  if (!workout) return;
+  const exercise = workout.exercises[exerciseIndex];
+  if (!exercise) return;
+
+  const weightsBlock = node.querySelector(".weights-log-fields");
+  const cardioBlock = node.querySelector(".cardio-log-fields");
+  const isCardio = isCardioExercise(exercise);
+  weightsBlock?.classList.toggle("hidden", isCardio);
+  cardioBlock?.classList.toggle("hidden", !isCardio);
+
+  const weightInput = node.querySelector(".workout-weight-input");
+  const repsInput = node.querySelector(".workout-reps-input");
+  const setsInput = node.querySelector(".workout-sets-input");
+  const minutesInput = node.querySelector(".workout-minutes-input");
+  const difficultyInput = node.querySelector(".workout-difficulty-input");
+
+  node.querySelectorAll(".workout-log-fields input").forEach((input) => {
+    input.addEventListener("click", (e) => e.stopPropagation());
+  });
+
+  if (isCardio) {
+    if (minutesInput) minutesInput.value = exercise.reps || "";
+    if (difficultyInput) difficultyInput.value = exercise.weight || "";
+    const applyCardio = () => {
+      exercise.reps = minutesInput?.value.trim() || "";
+      exercise.weight = difficultyInput?.value.trim() || "";
+      exercise.sets = "1";
+      normalizeExercise(exercise);
+      saveState();
+      refreshWorkoutExerciseRow(node, exercise);
+      renderRecordsPage();
+    };
+    minutesInput?.addEventListener("change", applyCardio);
+    difficultyInput?.addEventListener("change", applyCardio);
+    minutesInput?.addEventListener("blur", applyCardio);
+    difficultyInput?.addEventListener("blur", applyCardio);
+    return;
+  }
+
+  if (weightInput) weightInput.value = exercise.weight || "";
+  if (repsInput) repsInput.value = exercise.reps || "";
+  if (setsInput) setsInput.value = exercise.sets || "1";
+
+  const applyWeights = () => {
+    exercise.weight = weightInput?.value.trim() || "";
+    exercise.reps = repsInput?.value.trim() || "";
+    exercise.sets = setsInput?.value.trim() || "1";
+    normalizeExercise(exercise);
+    saveState();
+    refreshWorkoutExerciseRow(node, exercise);
+    renderRecordsPage();
+  };
+
+  [weightInput, repsInput, setsInput].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("change", applyWeights);
+    input.addEventListener("blur", applyWeights);
+  });
 }
 
 function bindEditorInput(input, workoutId, exerciseIndex, field) {
@@ -2963,8 +3056,8 @@ function setup() {
       alert("Allow notifications first.");
     }
   });
-  ui.showPrsOnlyBtn?.addEventListener("click", () => {
-    showPrsOnly = !showPrsOnly;
+  ui.workoutExerciseFilter?.addEventListener("change", () => {
+    showPrsOnly = ui.workoutExerciseFilter.value === "prs";
     renderHomeAndWorkout();
   });
   ui.expandAllExercisesBtn?.addEventListener("click", () => {
